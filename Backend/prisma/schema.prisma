@@ -22,6 +22,8 @@ model User {
   updatedAt    DateTime @updatedAt
 
   sessions Session[]
+  assignedFeedbacks Feedback[] @relation("FeedbackAssignee")
+  feedbackAuditEvents FeedbackAuditEvent[] @relation("FeedbackActor")
 
   @@map("users")
 }
@@ -52,6 +54,10 @@ model Vehicle {
   updatedAt DateTime @updatedAt
 
   route Route? @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  trips Trip[]
+  gpsTracks GpsTrack[]
+  trackingSources TrackingSource[]
+  feedbacks Feedback[]
 
   @@index([routeId])
   @@map("vehicles")
@@ -67,6 +73,7 @@ model Route {
 
   vehicles    Vehicle[]
   routeStops  RouteStop[]
+  trips       Trip[]
 
   @@map("routes")
 }
@@ -102,4 +109,93 @@ model RouteStop {
   @@unique([routeId, stopOrder])
   @@index([stopId])
   @@map("route_stops")
+}
+
+model Trip {
+  id        Int      @id @default(autoincrement())
+  vehicleId Int
+  routeId   Int
+  startedAt DateTime?
+  endedAt   DateTime?
+  status    String   @default("PENDING") @db.VarChar(50)
+  createdAt DateTime @default(now())
+
+  vehicle   Vehicle    @relation(fields: [vehicleId], references: [id])
+  route     Route      @relation(fields: [routeId], references: [id])
+  gpsTracks GpsTrack[]
+
+  @@index([vehicleId])
+  @@index([routeId])
+  @@map("trips")
+}
+
+model GpsTrack {
+  id         Int      @id @default(autoincrement())
+  vehicleId  Int
+  tripId     Int?
+  latitude   Decimal  @db.Decimal(10, 8)
+  longitude  Decimal  @db.Decimal(11, 8)
+  speed      Decimal? @db.Decimal(8, 2)
+  heading    Decimal? @db.Decimal(6, 2)
+  recordedAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip    Trip?   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([tripId])
+  @@index([recordedAt])
+  @@map("gps_tracks")
+}
+
+model TrackingSource {
+  id         Int      @id @default(autoincrement())
+  vehicleId  Int
+  type       String   @db.VarChar(100)
+  identifier String   @unique @db.VarChar(255)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("tracking_sources")
+}
+
+model Feedback {
+  id           Int      @id @default(autoincrement())
+  type         String   @db.VarChar(100)
+  vehicleId    Int?
+  message      String
+  status       String   @default("OPEN") @db.VarChar(50)
+  assignedToId Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vehicle      Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  assignedTo   User?                  @relation("FeedbackAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  auditEvents  FeedbackAuditEvent[]
+
+  @@index([vehicleId])
+  @@index([assignedToId])
+  @@map("feedbacks")
+}
+
+model FeedbackAuditEvent {
+  id         Int      @id @default(autoincrement())
+  feedbackId Int
+  actorId    Int?
+  eventType  String   @db.VarChar(100)
+  oldStatus  String?  @db.VarChar(50)
+  newStatus  String?  @db.VarChar(50)
+  note       String?
+  createdAt  DateTime @default(now())
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  actor    User?    @relation("FeedbackActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([feedbackId])
+  @@index([actorId])
+  @@map("feedback_audit_events")
 }

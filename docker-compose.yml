@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: university-shuttle-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: university_shuttle_tracking
+      POSTGRES_USER: shuttle
+      POSTGRES_PASSWORD: shuttle_dev
+    ports:
+      # Use 5433 on the host to avoid conflicts with a local PostgreSQL service.
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shuttle -d university_shuttle_tracking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

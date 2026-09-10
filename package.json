@@ -1,0 +1,44 @@
+{
+  "name": "university-shuttle-tracking",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev FrontEnd",
+    "build": "prisma generate --schema Backend/prisma/schema.prisma && next build FrontEnd",
+    "start": "next start FrontEnd",
+    "lint": "next lint FrontEnd",
+    "typecheck": "tsc --noEmit -p FrontEnd/tsconfig.json",
+    "test": "vitest run --config Backend/vitest.config.ts",
+    "test:watch": "vitest --config Backend/vitest.config.ts",
+    "db:generate": "prisma generate --schema Backend/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema Backend/prisma/schema.prisma",
+    "db:deploy": "prisma migrate deploy --schema Backend/prisma/schema.prisma",
+    "db:seed": "tsx Backend/prisma/seed.ts",
+    "db:user": "tsx Backend/prisma/create-user.ts"
+  },
+  "prisma": {
+    "schema": "Backend/prisma/schema.prisma",
+    "seed": "tsx Backend/prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "bcryptjs": "^3.0.3",
+    "leaflet": "^1.9.4",
+    "next": "^15.5.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-leaflet": "^5.0.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.20",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "dotenv": "^16.6.1",
+    "prisma": "^6.15.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

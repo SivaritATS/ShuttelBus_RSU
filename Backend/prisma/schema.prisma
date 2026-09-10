@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique @db.VarChar(100)
+  passwordHash String   @db.VarChar(255)
+  role         UserRole @default(USER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @db.VarChar(64)
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Vehicle {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(255)
+  type      String?  @db.VarChar(100)
+  routeId   Int?
+  latitude  Decimal? @db.Decimal(10, 8)
+  longitude Decimal? @db.Decimal(11, 8)
+  lastSeenAt DateTime?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  route Route? @relation(fields: [routeId], references: [id], onDelete: SetNull)
+
+  @@index([routeId])
+  @@map("vehicles")
+}
+
+model Route {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(255)
+  color     String?  @db.VarChar(20)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicles    Vehicle[]
+  routeStops  RouteStop[]
+
+  @@map("routes")
+}
+
+model Stop {
+  id        Int      @id @default(autoincrement())
+  nameTh    String   @db.VarChar(255)
+  nameEn    String?  @db.VarChar(255)
+  latitude  Decimal  @db.Decimal(10, 8)
+  longitude Decimal  @db.Decimal(11, 8)
+  imageUrl  String?  @db.VarChar(500)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  routeStops RouteStop[]
+
+  @@index([isActive])
+  @@map("stops")
+}
+
+model RouteStop {
+  id        Int      @id @default(autoincrement())
+  routeId   Int
+  stopId    Int
+  stopOrder Int
+  createdAt DateTime @default(now())
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop  Stop  @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, stopId])
+  @@unique([routeId, stopOrder])
+  @@index([stopId])
+  @@map("route_stops")
+}

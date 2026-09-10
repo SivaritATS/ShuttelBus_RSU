@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.example
+coverage
+*.log
+*.tsbuildinfo
+Skill/UX-UI-ProMax/SKILL.md

@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Route, RouteStop, Stop, Vehicle } from "@/types";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import type { Route, RouteStop, Stop, Vehicle, Trip } from "@/types";
 import { api } from "@/lib/client-api";
 import { AdminSidebar, getAdminTabLabel } from "./sections/AdminSidebar";
 import { AdminOverview } from "./sections/AdminOverview";
 import { AdminVehiclesSection } from "./sections/AdminVehiclesSection";
 import { AdminRoutesSection } from "./sections/AdminRoutesSection";
 import { AdminStopsSection } from "./sections/AdminStopsSection";
+import { AdminLiveMapSection } from "./sections/AdminLiveMapSection";
+import { useRealtimeSocket } from "@/lib/useSocket";
 import { blankRoute, blankStop, blankVehicle, type AdminTab, type Notice, type RouteForm, type StopForm, type VehicleForm } from "./admin-types";
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState<AdminTab>("overview");
+  const [tab, setTab] = useState<AdminTab>("live-map");
   const [routes, setRoutes] = useState<Route[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [stops, setStops] = useState<Stop[]>([]);
+  const [activeTrips, setActiveTrips] = useState<Trip[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
@@ -24,19 +27,45 @@ export default function AdminDashboard() {
   const [stopForm, setStopForm] = useState<StopForm>(blankStop);
   const [newRouteStopId, setNewRouteStopId] = useState("");
 
+  // Realtime Socket Callback สำหรับ Admin
+  const handleRealtimeLocation = useCallback((incomingVehicle: Vehicle) => {
+    setVehicles((prev) => {
+      const idx = prev.findIndex((v) => v.id === incomingVehicle.id);
+      if (idx !== -1) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], ...incomingVehicle };
+        return copy;
+      }
+      return [...prev, incomingVehicle];
+    });
+  }, []);
+
+  const handleTripChange = useCallback(() => {
+    // รีเฟรช active trips เมื่อมีเหตุการณ์
+    api<Trip[]>("/api/trips/active").then(setActiveTrips).catch(() => undefined);
+  }, []);
+
+  const { isConnected: isSocketConnected, sendLocationUpdate } = useRealtimeSocket({
+    room: "admin",
+    onLocationUpdate: handleRealtimeLocation,
+    onTripChange: handleTripChange,
+  });
+
   const selectedRoute = routes.find((route) => route.id === selectedRouteId) || null;
   const unassignedStops = useMemo(() => stops.filter((stop) => !routeStops.some((item) => item.stopId === stop.id)), [stops, routeStops]);
 
   const refresh = async () => {
-    const [nextRoutes, nextVehicles, nextStops] = await Promise.all([
+    const [nextRoutes, nextVehicles, nextStops, nextTrips] = await Promise.all([
       api<Route[]>("/api/routes"),
       api<Vehicle[]>("/api/vehicles"),
       api<Stop[]>("/api/stops"),
+      api<Trip[]>("/api/trips/active").catch(() => []),
     ]);
 
     setRoutes(nextRoutes);
     setVehicles(nextVehicles);
     setStops(nextStops);
+    setActiveTrips(nextTrips);
 
     if (selectedRouteId && nextRoutes.some((route) => route.id === selectedRouteId)) {
       setRouteStops(await api<RouteStop[]>(`/api/routes/${selectedRouteId}/stops`));
@@ -100,16 +129,70 @@ export default function AdminDashboard() {
     editingId ? "แก้ไข Stop แล้ว" : "เพิ่ม Stop แล้ว",
   );
 
+  const handleStartTrip = async (vehicleId: number, routeId: number) => {
+    await run(async () => {
+      await api("/api/trips/start", {
+        method: "POST",
+        body: JSON.stringify({ vehicleId, routeId }),
+      });
+    }, "เริ่มทริปใหม่เรียบร้อยแล้ว");
+  };
+
+  const handleEndTrip = async (tripId: number) => {
+    await run(async () => {
+      await api("/api/trips/end", {
+        method: "POST",
+        body: JSON.stringify({ tripId }),
+      });
+    }, "จบทริปเรียบร้อยแล้ว");
+  };
+
+  const handleSimulateMove = (vehicleId: number) => {
+    const target = vehicles.find((v) => v.id === vehicleId);
+    if (!target) return;
+
+    // ขยับพิกัดเล็กน้อยในบริเวณ ม.รังสิต
+    const deltaLat = (Math.random() - 0.5) * 0.0006;
+    const deltaLng = (Math.random() - 0.5) * 0.0006;
+    const currentLat = target.latitude ? Number(target.latitude) : 13.9658;
+    const currentLng = target.longitude ? Number(target.longitude) : 100.5860;
+    const nextLat = Number((currentLat + deltaLat).toFixed(7));
+    const nextLng = Number((currentLng + deltaLng).toFixed(7));
+
+    // ส่งสัญญาณ Realtime ไปยัง Socket Server ทันที
+    sendLocationUpdate({
+      vehicleId: target.id,
+      latitude: nextLat,
+      longitude: nextLng,
+      speed: Math.floor(Math.random() * 20) + 15,
+      heading: Math.floor(Math.random() * 360),
+    });
+
+    setNotice({
+      kind: "success",
+      message: `📡 จำลองส่ง GPS ให้ ${target.name} (${nextLat}, ${nextLng}) เรียบร้อย`,
+    });
+  };
+
   return (
     <div className="admin-layout">
       <AdminSidebar tab={tab} onTabChange={setTab} onReset={resetForm} />
       <main className="admin-main">
-        <div className="admin-heading">
-          <div><div className="eyebrow">Sprint 01 / data foundation</div><h1>{tab === "overview" ? "Network overview" : `${getAdminTabLabel(tab)} management`}</h1><p>จัดการข้อมูลที่เชื่อมต่อกับ Backend API และฐานข้อมูลกลาง</p></div>
-          <a className="button button-secondary" href="/api/health" target="_blank" rel="noreferrer">API health</a>
-        </div>
-
         {notice && <div className={`alert ${notice.kind === "error" ? "alert-error" : "alert-success"}`} style={{ marginBottom: 18 }} role="status">{notice.message}</div>}
+
+        {tab === "live-map" && (
+          <AdminLiveMapSection
+            routes={routes}
+            vehicles={vehicles}
+            stops={stops}
+            activeTrips={activeTrips}
+            isSocketConnected={isSocketConnected}
+            onStartTrip={handleStartTrip}
+            onEndTrip={handleEndTrip}
+            onSimulateMove={handleSimulateMove}
+          />
+        )}
+
         {tab === "overview" && <AdminOverview routes={routes} vehicles={vehicles} stops={stops} onRoutes={() => setTab("routes")} />}
 
         {tab === "vehicles" && <AdminVehiclesSection

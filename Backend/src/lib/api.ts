@@ -35,7 +35,7 @@ export function jsonError(error: unknown) {
   return Response.json({ error: { message: "เกิดข้อผิดพลาดภายในระบบ", code: "INTERNAL_ERROR" } }, { status: 500 });
 }
 
-export async function parseJson(request: Request) {
+export async function parseJson<T = any>(request: Request): Promise<T> {
   try {
     return await request.json();
   } catch {

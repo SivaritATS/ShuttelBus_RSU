@@ -8,10 +8,22 @@ export const GET = withErrorHandling(async (request: Request) => {
   const active = searchParams.get("active");
   const routes = await prisma.route.findMany({
     where: active === "true" ? { isActive: true } : undefined,
-    include: { _count: { select: { routeStops: true, vehicles: true } } },
+    include: {
+      routeStops: { orderBy: { stopOrder: "asc" }, include: { stop: true } },
+      _count: { select: { routeStops: true, vehicles: true } },
+    },
     orderBy: { name: "asc" },
   });
-  return Response.json(routes);
+
+  const routesWithGeometry = routes.map((route) => ({
+    ...route,
+    geometry: route.routeStops.map((rs) => [
+      Number(rs.stop.latitude),
+      Number(rs.stop.longitude),
+    ]),
+  }));
+
+  return Response.json(routesWithGeometry);
 });
 
 export const POST = withErrorHandling(async (request: Request) => {

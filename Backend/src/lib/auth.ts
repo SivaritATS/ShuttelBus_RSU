@@ -84,3 +84,47 @@ export async function clearAuthSession() {
 export async function hashPassword(password: string) {
   return hash(password, 12);
 }
+
+// Vehicle Token Authentication สำหรับ Mobile App และ Driver App
+export async function authenticateVehicle(identifier: { vehicleId?: number; name?: string }) {
+  const vehicle = await prisma.vehicle.findFirst({
+    where: {
+      ...(identifier.vehicleId ? { id: identifier.vehicleId } : {}),
+      ...(identifier.name ? { name: identifier.name } : {}),
+      isActive: true,
+    },
+    include: { route: true },
+  });
+
+  if (!vehicle) return null;
+
+  // สร้าง device token
+  const token = `vhk_${randomBytes(24).toString("hex")}_${vehicle.id}`;
+  return { token, vehicle };
+}
+
+export async function requireVehicleAuth(request: Request) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    throw new ApiError(401, "กรุณาส่ง Vehicle Authorization Token (Bearer token)");
+  }
+
+  const token = authHeader.replace("Bearer ", "").trim();
+  const parts = token.split("_");
+  const vehicleId = Number(parts[parts.length - 1]);
+
+  if (isNaN(vehicleId)) {
+    throw new ApiError(401, "Invalid vehicle token format");
+  }
+
+  const vehicle = await prisma.vehicle.findUnique({
+    where: { id: vehicleId, isActive: true },
+    include: { route: true },
+  });
+
+  if (!vehicle) {
+    throw new ApiError(401, "Vehicle not found or inactive");
+  }
+
+  return vehicle;
+}

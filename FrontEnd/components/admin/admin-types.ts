@@ -1,6 +1,6 @@
 import type { Route, RouteStop, Stop, Vehicle } from "@/types";
 
-export type AdminTab = "overview" | "vehicles" | "routes" | "stops";
+export type AdminTab = "overview" | "live-map" | "vehicles" | "routes" | "stops";
 export type Notice = { kind: "success" | "error"; message: string } | null;
 
 export type VehicleForm = {

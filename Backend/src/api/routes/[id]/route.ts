@@ -11,7 +11,17 @@ export const GET = withErrorHandling(async (_request: Request, { params }: Conte
     include: { routeStops: { orderBy: { stopOrder: "asc" }, include: { stop: true } }, vehicles: true },
   });
   if (!route) return Response.json({ error: { message: "ไม่พบ Route", code: "NOT_FOUND" } }, { status: 404 });
-  return Response.json(route);
+
+  // สร้าง geometry coordinates array [ [lat, lng], ... ] สำหรับวาดเส้นทาง
+  const geometry = route.routeStops.map((rs) => [
+    Number(rs.stop.latitude),
+    Number(rs.stop.longitude),
+  ]);
+
+  return Response.json({
+    ...route,
+    geometry,
+  });
 });
 
 export const PATCH = withErrorHandling(async (request: Request, { params }: Context) => {

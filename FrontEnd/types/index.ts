@@ -3,6 +3,8 @@ export type Route = {
   name: string;
   color: string | null;
   isActive: boolean;
+  geometry?: [number, number][];
+  routeStops?: RouteStop[];
   _count?: { routeStops: number; vehicles: number };
 };
 
@@ -32,5 +34,19 @@ export type Vehicle = {
   longitude: number | string | null;
   lastSeenAt: string | null;
   isActive: boolean;
+  speed?: number;
+  heading?: number;
+  tripId?: number | null;
   route: { id: number; name: string; color: string | null } | null;
+};
+
+export type Trip = {
+  id: number;
+  vehicleId: number;
+  routeId: number;
+  startedAt: string | null;
+  endedAt: string | null;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  vehicle?: Vehicle;
+  route?: Route;
 };

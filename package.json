@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev FrontEnd",
+    "realtime": "tsx Backend/src/server/socket-server.ts",
     "build": "prisma generate --schema Backend/prisma/schema.prisma && next build FrontEnd",
     "start": "next start FrontEnd",
     "lint": "next lint FrontEnd",
@@ -28,6 +29,8 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-leaflet": "^5.0.0",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
     "zod": "^4.1.5"
   },
   "devDependencies": {

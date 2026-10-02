@@ -6,7 +6,7 @@ import { normalizeOptionalString, stopSchema, validate } from "@backend/lib/vali
 export const GET = withErrorHandling(async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const active = searchParams.get("active");
-  const stops = await prisma.stop.findMany({ where: active === "true" ? { isActive: true } : undefined, orderBy: { nameTh: "asc" } });
+  const stops = await prisma.stop.findMany({ where: active === "true" ? { isActive: true } : undefined, orderBy: { id: "asc" } });
   return Response.json(stops);
 });
 

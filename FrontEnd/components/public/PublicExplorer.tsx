@@ -135,18 +135,6 @@ export default function PublicExplorer() {
       .catch((err) => console.error(err));
   }, [selectedRoute]);
 
-  // การกรองจุดจอดตาม Search Query
-  const filteredStops = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return allStops;
-    return allStops.filter(
-      (s) =>
-        s.nameTh.toLowerCase().includes(q) ||
-        (s.nameEn && s.nameEn.toLowerCase().includes(q)) ||
-        s.id.toString() === q
-    );
-  }, [allStops, searchQuery]);
-
   // รายชื่อจุดจอดที่จะส่งเข้า Map (ถ้าเลือก Route ให้ใช้ป้ายตาม Route ถ้าไม่ ให้ใช้ทั้งหมด)
   const displayStopsForMap = useMemo(() => {
     if (selectedRoute && routeStops.length > 0) {
@@ -154,6 +142,18 @@ export default function PublicExplorer() {
     }
     return allStops;
   }, [selectedRoute, routeStops, allStops]);
+
+  // การกรองจุดจอดตาม Search Query
+  const filteredStops = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return displayStopsForMap;
+    return displayStopsForMap.filter(
+      (s) =>
+        s.nameTh.toLowerCase().includes(q) ||
+        (s.nameEn && s.nameEn.toLowerCase().includes(q)) ||
+        s.id.toString() === q
+    );
+  }, [displayStopsForMap, searchQuery]);
 
   // ฟังก์ชันโฟกัสไปยังจุดจอด
   const handleFocusStop = (stop: Stop) => {
@@ -467,7 +467,7 @@ export default function PublicExplorer() {
                   role="button"
                   tabIndex={0}
                 >
-                  <div className="stop-num-badge">{stop.id || index + 1}</div>
+                  <div className="stop-num-badge">{index + 1}</div>
                   <div className="stop-text-col">
                     <strong className="stop-th">{stop.nameTh}</strong>
                     <span className="stop-en-sub">{stop.nameEn || "RSU Campus"}</span>

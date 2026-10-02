@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getCurrentUser } from "@backend/lib/auth";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ThemeToggle from "@/components/layout/ThemeToggle";
@@ -10,9 +11,14 @@ export default async function SiteHeader({ active }: { active: "public" | "admin
     <header className="topbar">
       <Link href="/" className="brand">
         <span className="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M5 18.5 18.5 5M10 5h8.5v8.5" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Image
+            src="/Bus_icon.png"
+            alt="RSU Shuttle Bus Icon"
+            width={26}
+            height={26}
+            className="brand-icon-img"
+            priority
+          />
         </span>
         <span className="brand-text">
           <span className="brand-title">Shuttle Bus RSU</span>

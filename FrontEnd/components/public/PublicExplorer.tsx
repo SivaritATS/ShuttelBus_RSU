@@ -37,6 +37,7 @@ export default function PublicExplorer() {
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [mounted, setMounted] = useState(false);
 
   // Realtime Socket Callback
   const handleRealtimeLocation = useCallback((incomingVehicle: Vehicle) => {
@@ -109,7 +110,10 @@ export default function PublicExplorer() {
       .catch((err) => {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setMounted(true);
+      });
   }, []);
 
   // Auto-refresh ตำแหน่งรถรางทุกๆ 12 วินาที
@@ -244,8 +248,8 @@ export default function PublicExplorer() {
                 </svg>
                 {vehiclesLoading ? "กำลังอัปเดต…" : "รีเฟรชตำแหน่ง"}
               </button>
-              <span className="last-updated-text">
-                {isSocketConnected ? "🟢 Realtime สด" : "🟡 Polling"} · {lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              <span className="last-updated-text" suppressHydrationWarning>
+                {isSocketConnected ? "🟢 Realtime สด" : "🟡 Polling"} · {mounted ? lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--"}
               </span>
             </div>
           </div>

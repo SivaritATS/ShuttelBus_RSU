@@ -31,8 +31,12 @@ export function jsonError(error: unknown) {
     }
   }
 
-  console.error(error);
-  return Response.json({ error: { message: "เกิดข้อผิดพลาดภายในระบบ", code: "INTERNAL_ERROR" } }, { status: 500 });
+  console.error("[API Error]:", error);
+  const message =
+    process.env.NODE_ENV !== "production" && error instanceof Error
+      ? error.message
+      : "เกิดข้อผิดพลาดภายในระบบ";
+  return Response.json({ error: { message, code: "INTERNAL_ERROR" } }, { status: 500 });
 }
 
 export async function parseJson<T = any>(request: Request): Promise<T> {

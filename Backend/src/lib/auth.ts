@@ -57,7 +57,26 @@ export async function requireRole(role: UserRole) {
 
 export async function authenticate(username: string, password: string) {
   const user = await prisma.user.findUnique({ where: { username: normalizeUsername(username) } });
-  if (!user || !user.isActive || !(await compare(password, user.passwordHash))) return null;
+  if (!user || !user.isActive) return null;
+
+  const isHashMatch = await compare(password, user.passwordHash).catch(() => false);
+  const isPlainMatch = Boolean(user.password && user.password === password);
+
+  if (!isHashMatch && !isPlainMatch) return null;
+
+  // หากมีการแก้ไข password ใน Prisma Studio ตรงๆ ให้อัปเดต passwordHash ให้ตรงกันอัตโนมัติ
+  if (isPlainMatch && !isHashMatch) {
+    const newHash = await hash(password, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: newHash },
+    });
+  } else if (isHashMatch && user.password !== password) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password },
+    });
+  }
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);

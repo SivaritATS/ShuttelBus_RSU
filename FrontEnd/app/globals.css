@@ -165,7 +165,7 @@ a, button, input, select { -webkit-tap-highlight-color: transparent; }
 
 .portal-stats-group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .stat-card { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: var(--white); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); }
-.stat-icon { font-size: 22px; }
+.stat-icon { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: rgba(22, 93, 255, 0.08); color: var(--blue); }
 .stat-num { display: block; font-size: 20px; font-weight: 700; color: var(--navy); line-height: 1.1; }
 .stat-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
 
@@ -173,7 +173,10 @@ a, button, input, select { -webkit-tap-highlight-color: transparent; }
 .button-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--blue); color: var(--white); border: 0; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 600; transition: background .18s ease; }
 .button-refresh:hover:not(:disabled) { background: var(--blue-dark); }
 .button-refresh:disabled { opacity: 0.7; cursor: wait; }
-.last-updated-text { font-size: 10px; color: var(--muted); text-align: center; }
+.last-updated-text { display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 10px; color: var(--muted); text-align: center; }
+.status-indicator-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.status-indicator-dot.live { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.status-indicator-dot.sync { background: #f59e0b; }
 
 /* Spin animation */
 @keyframes spinKeyframe { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }

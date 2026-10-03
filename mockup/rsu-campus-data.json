@@ -1,0 +1,233 @@
+{
+  "university": "Rangsit University (มณฑลการศึกษามหาวิทยาลัยรังสิต)",
+  "updatedAt": "2026-10-03",
+  "description": "Mockup พิกัดจุดจอดรถราง อาคารเรียน และเส้นทางเดินรถ มหาวิทยาลัยรังสิต (RSU)",
+  "stops": [
+    {
+      "id": 1,
+      "sequence": 1,
+      "building": "ทางเข้า (อาคารอุไร)",
+      "nameTh": "ทางเข้า (อาคารอุไร)",
+      "nameEn": "Main Campus Entrance (Urai Building)",
+      "latitude": 13.964839,
+      "longitude": 100.587530,
+      "category": "Entrance",
+      "description": "ประตูทางเข้าหลักมหาวิทยาลัยรังสิต ฝั่งอาคารอาทิตย์ อุไรรัตน์",
+      "searchKeywords": ["ทางเข้า", "ประตูหน้า", "อาคารอุไร", "ตึก 1", "entrance", "urai"]
+    },
+    {
+      "id": 2,
+      "sequence": 2,
+      "building": "ตึก 2",
+      "nameTh": "ตึก 2 (อาคารวิศวกรรมศาสตร์)",
+      "nameEn": "Building 2 (Faculty of Engineering)",
+      "latitude": 13.9641728,
+      "longitude": 100.587568,
+      "category": "Academic",
+      "description": "อาคารวิศวกรรมศาสตร์ 1 คณะวิศวกรรมศาสตร์",
+      "searchKeywords": ["ตึก 2", "อาคาร 2", "วิศวะ", "วิศวกรรมศาสตร์", "bldg 2", "engineering"]
+    },
+    {
+      "id": 3,
+      "sequence": 3,
+      "building": "ตึก 3",
+      "nameTh": "ตึก 3 (อาคารวิทยาศาสตร์)",
+      "nameEn": "Building 3 (Science Building)",
+      "latitude": 13.9639947,
+      "longitude": 100.5871336,
+      "category": "Academic",
+      "description": "อาคารวิทยาศาสตร์ ห้องปฏิบัติการวิทยาศาสตร์การแพทย์",
+      "searchKeywords": ["ตึก 3", "อาคาร 3", "วิทยาศาสตร์", "bldg 3", "science"]
+    },
+    {
+      "id": 4,
+      "sequence": 4,
+      "building": "ตึก 4",
+      "nameTh": "ตึก 4 (อาคารกายภาพบำบัด)",
+      "nameEn": "Building 4 (Physical Therapy Building)",
+      "latitude": 13.9638462,
+      "longitude": 100.5864097,
+      "category": "Academic",
+      "description": "คณะกายภาพบำบัดและเวชศาสตร์การกีฬา",
+      "searchKeywords": ["ตึก 4", "อาคาร 4", "กายภาพบำบัด", "bldg 4", "physical therapy"]
+    },
+    {
+      "id": 5,
+      "sequence": 5,
+      "building": "ตึก 5",
+      "nameTh": "ตึก 5 (อาคารวิษณุรัตน์)",
+      "nameEn": "Building 5 (Vitsanurat Building)",
+      "latitude": 13.9646207,
+      "longitude": 100.5861076,
+      "category": "Academic",
+      "description": "อาคารวิษณุรัตน์ วิศวกรรมศาสตร์ และศูนย์เทคโนโลยี",
+      "searchKeywords": ["ตึก 5", "อาคาร 5", "วิษณุรัตน์", "วิศวะ 2", "bldg 5"]
+    },
+    {
+      "id": 6,
+      "sequence": 6,
+      "building": "ตึก 8",
+      "nameTh": "ตึก 8 (อาคารเทคโนโลยีสารสนเทศ)",
+      "nameEn": "Building 8 (Information Technology)",
+      "latitude": 13.9652231,
+      "longitude": 100.585927,
+      "category": "Academic",
+      "description": "คณะเทคโนโลยีสารสนเทศและการสื่อสาร (ICT/IT)",
+      "searchKeywords": ["ตึก 8", "อาคาร 8", "ไอที", "ict", "it", "bldg 8"]
+    },
+    {
+      "id": 7,
+      "sequence": 7,
+      "building": "ตึก 9,10",
+      "nameTh": "ตึก 9, 10 (หอสมุด - รังสิตประภัสสร)",
+      "nameEn": "Building 9, 10 (Library - Rangsit Praphatsorn)",
+      "latitude": 13.9659386,
+      "longitude": 100.5857465,
+      "category": "Central",
+      "description": "ศูนย์กลางมหาวิทยาลัย หอสมุด และอาคารรังสิตประภัสสร โรงอาหารกลาง",
+      "searchKeywords": ["ตึก 9", "ตึก 10", "ตึก 9,10", "หอสมุด", "รังสิตประภัสสร", "โรงอาหารกลาง", "library", "bldg 9", "bldg 10"]
+    },
+    {
+      "id": 8,
+      "sequence": 8,
+      "building": "ตึก 12,13",
+      "nameTh": "ตึก 12, 13 (ศาลาดนตรี - เฉลิมพระเกียรติ)",
+      "nameEn": "Building 12, 13 (Suryadhep Music Sala)",
+      "latitude": 13.9667372,
+      "longitude": 100.585528,
+      "category": "Arts & Auditorium",
+      "description": "ศาลาดนตรีสุริยเทพ และอาคารเฉลิมพระเกียรติ วิทยาลัยดนตรี",
+      "searchKeywords": ["ตึก 12", "ตึก 13", "ตึก 12,13", "ศาลาดนตรี", "เฉลิมพระเกียรติ", "ดนตรี", "auditorium", "music", "bldg 12", "bldg 13"]
+    },
+    {
+      "id": 9,
+      "sequence": 9,
+      "building": "ตึก 17",
+      "nameTh": "ตึก 17 (อาคารภานุรัศมี ทันตแพทย์)",
+      "nameEn": "Building 17 (Dentistry Building)",
+      "latitude": 13.9668052,
+      "longitude": 100.5833635,
+      "category": "Medical",
+      "description": "คณะทันตแพทยศาสตร์ อาคารเรียนและคลินิกทันตกรรม",
+      "searchKeywords": ["ตึก 17", "อาคาร 17", "ทันตแพทย์", "ทำฟัน", "dentistry", "bldg 17"]
+    },
+    {
+      "id": 10,
+      "sequence": 10,
+      "building": "ตึก 19,18",
+      "nameTh": "ตึก 19, 18 (ศาลากีฬา - สุริยะเทพ)",
+      "nameEn": "Building 19, 18 (Sports Complex - Suryadhep)",
+      "latitude": 13.9688263,
+      "longitude": 100.583911,
+      "category": "Sports & Living",
+      "description": "อาคารศาลากีฬา สระว่ายน้ำ สนามกีฬา และหอพักสุริยะเทพ",
+      "searchKeywords": ["ตึก 18", "ตึก 19", "ตึก 19,18", "ศาลากีฬา", "สนามกีฬา", "สระว่ายน้ำ", "หอพัก", "sports", "gym", "bldg 18", "bldg 19"]
+    },
+    {
+      "id": 11,
+      "sequence": 11,
+      "building": "ตึก 15",
+      "nameTh": "ตึก 15 (ดิจิทัลมัลติมีเดียคอมเพล็กซ์)",
+      "nameEn": "Building 15 (Digital Multimedia Complex)",
+      "latitude": 13.967794,
+      "longitude": 100.585149,
+      "category": "Media & Arts",
+      "description": "คณะนิเทศศาสตร์ และดิจิทัลมัลติมีเดีย สตูดิโอผลิตสื่อ",
+      "searchKeywords": ["ตึก 15", "อาคาร 15", "นิเทศศาสตร์", "มัลติมีเดีย", "สตูดิโอ", "comm arts", "multimedia", "bldg 15"]
+    },
+    {
+      "id": 12,
+      "sequence": 12,
+      "building": "ตึก 14",
+      "nameTh": "ตึก 14 (อาคารนวัตกรรม)",
+      "nameEn": "Building 14 (Innovation Building)",
+      "latitude": 13.9681782,
+      "longitude": 100.5872618,
+      "category": "Academic",
+      "description": "อาคารนวัตกรรม สถาบันวิจัยและพัฒนา",
+      "searchKeywords": ["ตึก 14", "อาคาร 14", "นวัตกรรม", "วิจัย", "innovation", "bldg 14"]
+    },
+    {
+      "id": 13,
+      "sequence": 13,
+      "building": "ตึก 11",
+      "nameTh": "ตึก 11 (อาคารรัตนคุณากร)",
+      "nameEn": "Building 11 (Rattanakunakorn Building)",
+      "latitude": 13.9664461,
+      "longitude": 100.5868495,
+      "category": "Academic",
+      "description": "อาคารรัตนคุณากร บัณฑิตวิทยาลัย และศูนย์ประสานงานนักศึกษา",
+      "searchKeywords": ["ตึก 11", "อาคาร 11", "รัตนคุณากร", "บัณฑิตวิทยาลัย", "bldg 11"]
+    },
+    {
+      "id": 14,
+      "sequence": 14,
+      "building": "ทางออก (อาคารอุไร)",
+      "nameTh": "ทางออก (อาคารอุไร)",
+      "nameEn": "Main Campus Exit (Urai Building)",
+      "latitude": 13.965755,
+      "longitude": 100.587327,
+      "category": "Exit",
+      "description": "ประตูทางออกมหาวิทยาลัยรังสิต เชื่อมสู่ถนนเอกทักษิณ",
+      "searchKeywords": ["ทางออก", "ประตูออก", "อาคารอุไร", "exit", "urai"]
+    }
+  ],
+  "routes": [
+    {
+      "id": 1,
+      "name": "RSU Main Campus Loop",
+      "color": "#165dff",
+      "description": "สายวิ่งวนรอบมหาวิทยาลัย ครบทั้ง 14 ป้าย จากทางเข้าผ่านทุกตึกจนถึงทางออก",
+      "isActive": true,
+      "stopIds": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    },
+    {
+      "id": 2,
+      "name": "RSU North-South Line",
+      "color": "#F97316",
+      "description": "สายเชื่อมตึกกลาง วิทยาการ และหอพัก (ทางเข้า -> ตึก 5 -> ตึก 8 -> ตึก 9/10 -> ตึก 15 -> ตึก 11 -> ทางออก)",
+      "isActive": true,
+      "stopIds": [1, 5, 6, 7, 11, 13, 14]
+    },
+    {
+      "id": 3,
+      "name": "RSU Special Express",
+      "color": "#0ba6a6",
+      "description": "สายด่วนเชื่อมศูนย์ทันตแพทย์ ดนตรี และนวัตกรรม (ทางเข้า -> ตึก 8 -> ตึก 12/13 -> ตึก 17 -> ตึก 19/18 -> ตึก 14 -> ทางออก)",
+      "isActive": true,
+      "stopIds": [1, 6, 8, 9, 10, 12, 14]
+    }
+  ],
+  "vehicles": [
+    {
+      "id": 1,
+      "name": "RSU Shuttle 01 (รถรางไฟฟ้า 1)",
+      "type": "Electric Tram",
+      "routeId": 1,
+      "latitude": 13.9646207,
+      "longitude": 100.5861076,
+      "locationDescription": "กำลังจอดรับผู้โดยสารหน้า ตึก 5 (อาคารวิษณุรัตน์)",
+      "isActive": true
+    },
+    {
+      "id": 2,
+      "name": "RSU Shuttle 02 (รถรางไฟฟ้า 2)",
+      "type": "Electric Tram",
+      "routeId": 2,
+      "latitude": 13.9664461,
+      "longitude": 100.5868495,
+      "locationDescription": "กำลังวิ่งผ่าน ตึก 11 (อาคารรัตนคุณากร)",
+      "isActive": true
+    },
+    {
+      "id": 3,
+      "name": "RSU Shuttle 03 (รถมินิบัสรับส่ง)",
+      "type": "Mini Bus",
+      "routeId": 3,
+      "latitude": 13.9681782,
+      "longitude": 100.5872618,
+      "locationDescription": "กำลังจอดรับส่งหน้า ตึก 14 (อาคารนวัตกรรม)",
+      "isActive": true
+    }
+  ]
+}

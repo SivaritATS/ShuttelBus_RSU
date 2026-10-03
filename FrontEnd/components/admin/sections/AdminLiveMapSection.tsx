@@ -48,7 +48,8 @@ export function AdminLiveMapSection({
         </div>
         <div className="hero-actions">
           <span className={`status ${isSocketConnected ? "active" : "inactive"}`}>
-            {isSocketConnected ? "🟢 Socket Connected" : "🟡 Reconnecting…"}
+            <span className={`status-indicator-dot ${isSocketConnected ? "live" : "sync"}`} style={{ marginRight: 6 }} />
+            {isSocketConnected ? "Socket Connected" : "Reconnecting…"}
           </span>
         </div>
       </div>
@@ -122,7 +123,13 @@ export function AdminLiveMapSection({
           <div className="data-panel-head">
             <div>
               <h3 className="panel-heading">
-                <span className="icon">⏱️</span> ทริปที่กำลังดำเนินการ ({activeTrips.length})
+                <span className="icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </span>
+                ทริปที่กำลังดำเนินการ ({activeTrips.length})
               </h3>
               <p className="panel-sub">สถานะการเดินรถที่กำลังบันทึกพิกัด</p>
             </div>
@@ -165,7 +172,13 @@ export function AdminLiveMapSection({
           <div className="data-panel-head">
             <div>
               <h3 className="panel-heading">
-                <span className="icon">🚎</span> ควบคุมยานพาหนะ ({vehicles.length})
+                <span className="icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="15" rx="3" />
+                    <path d="M3 11h18M7 15h.01M17 15h.01M5 18v2M19 18v2" />
+                  </svg>
+                </span>
+                ควบคุมยานพาหนะ ({vehicles.length})
               </h3>
               <p className="panel-sub">เริ่มทริปใหม่ หรือจำลองส่งพิกัด GPS แบบ Realtime</p>
             </div>
@@ -209,7 +222,7 @@ export function AdminLiveMapSection({
                         onClick={() => onSimulateMove(v.id)}
                         title="จำลองส่งพิกัด GPS ขยับรถไปข้างหน้า"
                       >
-                        📡 จำลอง GPS
+                        จำลอง GPS
                       </button>
                     </div>
                   </div>

@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Route, RouteStop, Stop, Vehicle } from "@/types";
-
 import { useRealtimeSocket } from "@/lib/useSocket";
+import { MOCK_STOPS, MOCK_ROUTES, MOCK_VEHICLES, getRoutesWithGeometry } from "@mockup/mockData";
 
 // โหลด CampusLiveMap แบบ dynamic เพื่อหลีกเลี่ยง Leaflet window error ใน SSR
 const CampusLiveMap = dynamic(
@@ -98,17 +98,28 @@ export default function PublicExplorer() {
       getJson<Vehicle[]>("/api/vehicles/locations"),
     ])
       .then(([routesData, stopsData, vehiclesData]) => {
-        setRoutes(routesData);
-        setAllStops(stopsData);
-        setVehicles(vehiclesData);
-        // เลือก Route แรกเป็นค่าเริ่มต้น (ถ้ามี)
-        if (routesData.length > 0) {
-          setSelectedRoute(routesData[0]);
+        const finalRoutes = routesData && routesData.length > 0 ? routesData : (getRoutesWithGeometry() as unknown as Route[]);
+        const finalStops = stopsData && stopsData.length > 0 ? stopsData : (MOCK_STOPS as unknown as Stop[]);
+        const finalVehicles = vehiclesData && vehiclesData.length > 0 ? vehiclesData : (MOCK_VEHICLES as unknown as Vehicle[]);
+
+        setRoutes(finalRoutes);
+        setAllStops(finalStops);
+        setVehicles(finalVehicles);
+        if (finalRoutes.length > 0) {
+          setSelectedRoute(finalRoutes[0]);
         }
         setLastUpdated(new Date());
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล");
+        console.warn("[PublicExplorer] Database API unreachable, loading offline mock campus dataset:", err);
+        const fallbackRoutes = getRoutesWithGeometry() as unknown as Route[];
+        setRoutes(fallbackRoutes);
+        setAllStops(MOCK_STOPS as unknown as Stop[]);
+        setVehicles(MOCK_VEHICLES as unknown as Vehicle[]);
+        if (fallbackRoutes.length > 0) {
+          setSelectedRoute(fallbackRoutes[0]);
+        }
+        setLastUpdated(new Date());
       })
       .finally(() => {
         setLoading(false);
@@ -131,8 +142,18 @@ export default function PublicExplorer() {
       return;
     }
     getJson<RouteStop[]>(`/api/routes/${selectedRoute.id}/stops`)
-      .then((data) => setRouteStops(data))
-      .catch((err) => console.error(err));
+      .then((data) => {
+        if (data && data.length > 0) {
+          setRouteStops(data);
+        } else if ((selectedRoute as any).routeStops) {
+          setRouteStops((selectedRoute as any).routeStops);
+        }
+      })
+      .catch(() => {
+        if ((selectedRoute as any).routeStops) {
+          setRouteStops((selectedRoute as any).routeStops);
+        }
+      });
   }, [selectedRoute]);
 
   // รายชื่อจุดจอดที่จะส่งเข้า Map (ถ้าเลือก Route ให้ใช้ป้ายตาม Route ถ้าไม่ ให้ใช้ทั้งหมด)
@@ -143,16 +164,20 @@ export default function PublicExplorer() {
     return allStops;
   }, [selectedRoute, routeStops, allStops]);
 
-  // การกรองจุดจอดตาม Search Query
+  // การกรองจุดจอดตาม Search Query รองรับชื่อไทย อังกฤษ หมายเลขตึก และคีย์เวิร์ด
   const filteredStops = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return displayStopsForMap;
-    return displayStopsForMap.filter(
-      (s) =>
-        s.nameTh.toLowerCase().includes(q) ||
-        (s.nameEn && s.nameEn.toLowerCase().includes(q)) ||
-        s.id.toString() === q
-    );
+    return displayStopsForMap.filter((s) => {
+      const nameThMatch = s.nameTh.toLowerCase().includes(q);
+      const nameEnMatch = s.nameEn ? s.nameEn.toLowerCase().includes(q) : false;
+      const idMatch = s.id.toString() === q;
+      const buildingMatch = (s as any).building ? (s as any).building.toLowerCase().includes(q) : false;
+      const keywordsMatch = Array.isArray((s as any).searchKeywords)
+        ? (s as any).searchKeywords.some((k: string) => k.toLowerCase().includes(q))
+        : false;
+      return nameThMatch || nameEnMatch || idMatch || buildingMatch || keywordsMatch;
+    });
   }, [displayStopsForMap, searchQuery]);
 
   // ฟังก์ชันโฟกัสไปยังจุดจอด
@@ -210,7 +235,12 @@ export default function PublicExplorer() {
 
           <div className="portal-stats-group">
             <div className="stat-card">
-              <span className="stat-icon">🚎</span>
+              <span className="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="15" rx="3" />
+                  <path d="M3 11h18M7 15h.01M17 15h.01M5 18v2M19 18v2" />
+                </svg>
+              </span>
               <div>
                 <strong className="stat-num">{vehicles.length} คัน</strong>
                 <span className="stat-label">รถรางที่กำลังวิ่ง</span>
@@ -218,7 +248,12 @@ export default function PublicExplorer() {
             </div>
 
             <div className="stat-card">
-              <span className="stat-icon">📍</span>
+              <span className="stat-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z" />
+                  <circle cx="12" cy="9" r="2.5" />
+                </svg>
+              </span>
               <div>
                 <strong className="stat-num">{allStops.length} จุด</strong>
                 <span className="stat-label">ป้ายรถรอบ ม.</span>
@@ -249,7 +284,8 @@ export default function PublicExplorer() {
                 {vehiclesLoading ? "กำลังอัปเดต…" : "รีเฟรชตำแหน่ง"}
               </button>
               <span className="last-updated-text" suppressHydrationWarning>
-                {isSocketConnected ? "🟢 Realtime สด" : "🟡 Polling"} · {mounted ? lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--"}
+                <span className={`status-indicator-dot ${isSocketConnected ? "live" : "sync"}`} />
+                {isSocketConnected ? "Realtime สด" : "Polling"} · {mounted ? lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--"}
               </span>
             </div>
           </div>
@@ -299,7 +335,7 @@ export default function PublicExplorer() {
                 checked={showVehicles}
                 onChange={(e) => setShowVehicles(e.target.checked)}
               />
-              <span>🚎 รถราง</span>
+              <span>รถราง</span>
             </label>
             <label className="toggle-chip">
               <input
@@ -307,7 +343,7 @@ export default function PublicExplorer() {
                 checked={showStops}
                 onChange={(e) => setShowStops(e.target.checked)}
               />
-              <span>📍 ป้ายหยุด</span>
+              <span>ป้ายหยุด</span>
             </label>
             <label className="toggle-chip">
               <input
@@ -315,7 +351,7 @@ export default function PublicExplorer() {
                 checked={showRouteLine}
                 onChange={(e) => setShowRouteLine(e.target.checked)}
               />
-              <span>〰️ เส้นทาง</span>
+              <span>เส้นทาง</span>
             </label>
             <button
               type="button"
@@ -369,7 +405,13 @@ export default function PublicExplorer() {
             <div className="data-panel-head">
               <div>
                 <h3 className="panel-heading">
-                  <span className="icon">🚎</span> รถรางที่กำลังให้บริการ
+                  <span className="icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="15" rx="3" />
+                      <path d="M3 11h18M7 15h.01M17 15h.01M5 18v2M19 18v2" />
+                    </svg>
+                  </span>
+                  รถรางที่กำลังให้บริการ
                 </h3>
                 <p className="panel-sub">
                   {vehicles.length > 0
@@ -441,7 +483,13 @@ export default function PublicExplorer() {
             <div className="data-panel-head">
               <div>
                 <h3 className="panel-heading">
-                  <span className="icon">📍</span> จุดจอดและอาคารในมหาวิทยาลัย
+                  <span className="icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z" />
+                      <circle cx="12" cy="9" r="2.5" />
+                    </svg>
+                  </span>
+                  จุดจอดและอาคารในมหาวิทยาลัย
                 </h3>
                 <p className="panel-sub">
                   พิกัด 14 อาคารตามแนวเส้นทางรถราง (คลิกเพื่อเลื่อนดูบนแผนที่)

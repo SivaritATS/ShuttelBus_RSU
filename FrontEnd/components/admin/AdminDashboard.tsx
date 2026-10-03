@@ -170,7 +170,7 @@ export default function AdminDashboard() {
 
     setNotice({
       kind: "success",
-      message: `📡 จำลองส่ง GPS ให้ ${target.name} (${nextLat}, ${nextLng}) เรียบร้อย`,
+      message: `จำลองส่ง GPS ให้ ${target.name} (${nextLat}, ${nextLng}) เรียบร้อย`,
     });
   };
 

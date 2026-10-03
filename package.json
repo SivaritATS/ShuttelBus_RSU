@@ -7,10 +7,10 @@
     "realtime": "tsx Backend/src/server/socket-server.ts",
     "build": "prisma generate --schema Backend/prisma/schema.prisma && next build FrontEnd",
     "start": "next start FrontEnd",
-    "lint": "next lint FrontEnd",
+    "lint": "npm run typecheck",
     "typecheck": "tsc --noEmit -p FrontEnd/tsconfig.json",
-    "test": "vitest run --config Backend/vitest.config.ts",
-    "test:watch": "vitest --config Backend/vitest.config.ts",
+    "test": "vitest run --config Backend/vitest.config.mts",
+    "test:watch": "vitest --config Backend/vitest.config.mts",
     "db:generate": "prisma generate --schema Backend/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema Backend/prisma/schema.prisma",
     "db:deploy": "prisma migrate deploy --schema Backend/prisma/schema.prisma",
@@ -22,10 +22,10 @@
     "seed": "tsx Backend/prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.15.0",
+    "@prisma/client": "^6.12.0",
     "bcryptjs": "^3.0.3",
     "leaflet": "^1.9.4",
-    "next": "^15.5.2",
+    "next": "^16.3.8",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-leaflet": "^5.0.0",
@@ -39,9 +39,9 @@
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "dotenv": "^16.6.1",
-    "prisma": "^6.15.0",
+    "prisma": "^6.12.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.3"
   }
 }

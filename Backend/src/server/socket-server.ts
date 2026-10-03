@@ -214,5 +214,5 @@ io.on("connection", (socket: Socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 [RSU Shuttle Realtime Server] Socket.IO listening on port ${PORT}`);
+  console.log(`[RSU Shuttle Realtime Server] Socket.IO listening on port ${PORT}`);
 });

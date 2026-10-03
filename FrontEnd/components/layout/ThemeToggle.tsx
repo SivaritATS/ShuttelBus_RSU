@@ -35,7 +35,12 @@ export default function ThemeToggle() {
         aria-label="Toggle theme"
         disabled
       >
-        <span className="theme-toggle-icon">🌓</span>
+        <span className="theme-toggle-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" />
+          </svg>
+        </span>
       </button>
     );
   }

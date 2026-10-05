@@ -59,23 +59,32 @@ export async function authenticate(username: string, password: string) {
   const user = await prisma.user.findUnique({ where: { username: normalizeUsername(username) } });
   if (!user || !user.isActive) return null;
 
+  const userRecord = user as typeof user & { password?: string | null };
   const isHashMatch = await compare(password, user.passwordHash).catch(() => false);
-  const isPlainMatch = Boolean(user.password && user.password === password);
+  const isPlainMatch = Boolean(userRecord.password && userRecord.password === password);
 
   if (!isHashMatch && !isPlainMatch) return null;
 
   // หากมีการแก้ไข password ใน Prisma Studio ตรงๆ ให้อัปเดต passwordHash ให้ตรงกันอัตโนมัติ
   if (isPlainMatch && !isHashMatch) {
-    const newHash = await hash(password, 12);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash: newHash },
-    });
-  } else if (isHashMatch && user.password !== password) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password },
-    });
+    try {
+      const newHash = await hash(password, 12);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: newHash },
+      });
+    } catch (e) {
+      console.warn("Could not sync passwordHash:", e);
+    }
+  } else if (isHashMatch && userRecord.password && userRecord.password !== password) {
+    try {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password } as any,
+      });
+    } catch (e) {
+      console.warn("Could not sync plain password:", e);
+    }
   }
 
   const token = randomBytes(32).toString("hex");

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate --schema Backend/prisma/schema.prisma",
     "dev": "next dev FrontEnd",
     "realtime": "tsx Backend/src/server/socket-server.ts",
     "build": "prisma generate --schema Backend/prisma/schema.prisma && next build FrontEnd",

@@ -24,6 +24,9 @@ cd ShuttelBus_RSU
 
 # 2. ติดตั้ง Dependencies
 npm install
+
+# 3. .env .example
+ให้สร้าง .env ขึ้นมาแล้วก็อบไฟล์จาก .env .example ไปใส่แล้ว config เป็นของตัวเองได้เลย
 ```
 
 ### รูปแบบที่ 1: รันด่วนทันที (Standalone / Mock Mode)

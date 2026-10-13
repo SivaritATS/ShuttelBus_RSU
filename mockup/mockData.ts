@@ -21,6 +21,7 @@ export interface MockRoute {
   description: string;
   isActive: boolean;
   stopIds: number[];
+  geometry?: [number, number][];
 }
 
 export interface MockVehicle {
@@ -45,7 +46,10 @@ export const MOCK_STOPS: MockStop[] = rawData.stops.map((s) => ({
   isActive: true,
 }));
 
-export const MOCK_ROUTES: MockRoute[] = rawData.routes;
+export const MOCK_ROUTES: MockRoute[] = rawData.routes.map((r) => ({
+  ...r,
+  geometry: (r.geometry as [number, number][]) || undefined,
+}));
 
 export const MOCK_VEHICLES: MockVehicle[] = rawData.vehicles.map((v) => {
   const route = rawData.routes.find((r) => r.id === v.routeId);
@@ -103,10 +107,12 @@ export function getRoutesWithGeometry() {
       })
       .filter(Boolean);
 
-    const geometry = routeStops.map((rs: any) => [
-      Number(rs.stop.latitude),
-      Number(rs.stop.longitude),
-    ]);
+    const geometry = (route.geometry && route.geometry.length > 0)
+      ? route.geometry
+      : routeStops.map((rs: any) => [
+          Number(rs.stop.latitude),
+          Number(rs.stop.longitude),
+        ]);
 
     return {
       id: route.id,

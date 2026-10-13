@@ -2,7 +2,7 @@ import { prisma } from "@backend/lib/prisma";
 import { requireRole } from "@backend/lib/auth";
 import { parseJson, withErrorHandling } from "@backend/lib/api";
 import { normalizeOptionalString, routeSchema, validate } from "@backend/lib/validation";
-import { getRoutesWithGeometry } from "../../../../mockup/mockData";
+import { getRoutesWithGeometry, MOCK_ROUTES } from "../../../../mockup/mockData";
 
 export const GET = withErrorHandling(async (request: Request) => {
   const { searchParams } = new URL(request.url);
@@ -19,13 +19,23 @@ export const GET = withErrorHandling(async (request: Request) => {
     });
 
     if (routes && routes.length > 0) {
-      const routesWithGeometry = routes.map((route) => ({
-        ...route,
-        geometry: route.routeStops.map((rs) => [
-          Number(rs.stop.latitude),
-          Number(rs.stop.longitude),
-        ]),
-      }));
+      const routesWithGeometry = routes.map((route) => {
+        const matchingMock = MOCK_ROUTES.find(
+          (mr) => mr.id === route.id || mr.name === route.name
+        );
+        const geometry =
+          matchingMock?.geometry && matchingMock.geometry.length > 0
+            ? matchingMock.geometry
+            : route.routeStops.map((rs) => [
+                Number(rs.stop.latitude),
+                Number(rs.stop.longitude),
+              ]);
+
+        return {
+          ...route,
+          geometry,
+        };
+      });
 
       return Response.json(routesWithGeometry);
     }

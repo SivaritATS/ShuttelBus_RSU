@@ -4,7 +4,8 @@ import { Server, Socket } from "socket.io";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-const PORT = process.env.SOCKET_PORT ? Number(process.env.SOCKET_PORT) : 3001;
+const PORT = Number(process.env.PORT || process.env.SOCKET_PORT || 10000);
+const HOST = "0.0.0.0";
 
 const server = http.createServer(async (req, res) => {
   // ตั้งค่า CORS headers สำหรับ HTTP API endpoint
@@ -213,6 +214,6 @@ io.on("connection", (socket: Socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`[RSU Shuttle Realtime Server] Socket.IO listening on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`[RSU Shuttle Realtime Server] Socket.IO listening on ${HOST}:${PORT}`);
 });

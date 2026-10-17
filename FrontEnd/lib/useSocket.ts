@@ -4,11 +4,26 @@ import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import type { Vehicle } from "@/types";
 
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL ||
-  (typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:3001`
-    : "http://localhost:3001");
+function getSocketUrl(): string {
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+    return process.env.NEXT_PUBLIC_SOCKET_URL;
+  }
+  if (typeof window !== "undefined") {
+    const isLocalhost =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    if (isLocalhost) {
+      return `${window.location.protocol}//${window.location.hostname}:${process.env.NEXT_PUBLIC_SOCKET_PORT || "3001"}`;
+    }
+
+    // บน Production (เช่น Render/Vercel): ใช้ origin ของเว็บโดยอัตโนมัติ (ไม่พ่วง :3001)
+    return window.location.origin;
+  }
+  return "http://localhost:3001";
+}
+
+const SOCKET_URL = getSocketUrl();
 
 export function useRealtimeSocket({
   room = "public",

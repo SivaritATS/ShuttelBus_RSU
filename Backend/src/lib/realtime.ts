@@ -1,4 +1,5 @@
-const SOCKET_INTERNAL_URL = process.env.SOCKET_INTERNAL_URL || "http://127.0.0.1:3001";
+const socketPort = process.env.PORT || process.env.SOCKET_PORT || "10000";
+const SOCKET_INTERNAL_URL = process.env.SOCKET_INTERNAL_URL || `http://127.0.0.1:${socketPort}`;
 
 export async function broadcastLocation(payload: unknown) {
   try {

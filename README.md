@@ -8,7 +8,7 @@
 
 - **Frontend**: Next.js 16 (Turbopack, App Router), React 19, TypeScript, Vanilla CSS, Leaflet Map
 - **Backend & Database**: Next.js Route Handlers, Prisma ORM 6.12, PostgreSQL 16 (PostGIS)
-- **Realtime Server**: Socket.IO 4.8 (Port 3001)
+- **Realtime Server**: Socket.IO 4.8
 - **Testing**: Vitest 5.0
 
 ---

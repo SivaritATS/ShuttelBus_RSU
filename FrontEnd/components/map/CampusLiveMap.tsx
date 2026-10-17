@@ -121,13 +121,68 @@ export default function CampusLiveMap({
     };
   }, []);
 
-  // พิกัดสำหรับเส้นทาง Polyline
+  // สถานะเก็บพิกัดถนนที่คำนวณแบบ Dynamic ผ่าน OSRM (สำหรับกรณี Route ที่ยังไม่มี geometry สำเร็จรูป)
+  const [dynamicRoadCoords, setDynamicRoadCoords] = useState<[number, number][] | null>(null);
+
+  // คำนวณเส้นทางตามถนนผ่าน OSRM อัตโนมัติเมื่อสายรถไม่มี geometry สำเร็จรูป
+  useEffect(() => {
+    // ถ้าปิดเส้นทาง หรือมี geometry ใน selectedRoute อยู่แล้ว ไม่ต้องคำนวณใหม่
+    if (!showRouteLine || (selectedRoute?.geometry && selectedRoute.geometry.length > 1)) {
+      setDynamicRoadCoords(null);
+      return;
+    }
+
+    if (routeStops.length < 2) {
+      setDynamicRoadCoords(null);
+      return;
+    }
+
+    let isCancelled = false;
+    const fetchOSRMRoute = async () => {
+      try {
+        const coordsStr = routeStops
+          .map((rs) => `${Number(rs.stop.longitude)},${Number(rs.stop.latitude)}`)
+          .join(";");
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!isCancelled && data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
+          const latLngs = data.routes[0].geometry.coordinates.map(
+            (c: [number, number]) => [c[1], c[0]] as [number, number]
+          );
+          setDynamicRoadCoords(latLngs);
+        }
+      } catch (err) {
+        console.warn("[CampusLiveMap] Could not fetch OSRM road geometry, falling back to direct line:", err);
+      }
+    };
+
+    fetchOSRMRoute();
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedRoute, routeStops, showRouteLine]);
+
+  // พิกัดสำหรับเส้นทาง Polyline (ลำดับ: 1. geometry ใน Route -> 2. dynamicRoadCoords OSRM -> 3. เส้นตรงระหว่างจุดจอด)
   const polylineCoords = useMemo(() => {
-    if (!showRouteLine || routeStops.length === 0) return [];
+    if (!showRouteLine) return [];
+
+    // 1. ถ้ามี geometry ที่ระบุแนวถนนจริงใน Route
+    if (selectedRoute?.geometry && selectedRoute.geometry.length > 1) {
+      return selectedRoute.geometry;
+    }
+
+    // 2. ถ้าคำนวณแนวถนน OSRM สำเร็จ
+    if (dynamicRoadCoords && dynamicRoadCoords.length > 1) {
+      return dynamicRoadCoords;
+    }
+
+    // 3. Fallback ลากเส้นตรงระหว่างจุดจอด
+    if (routeStops.length === 0) return [];
     return routeStops.map(
       (rs) => [Number(rs.stop.latitude), Number(rs.stop.longitude)] as [number, number]
     );
-  }, [routeStops, showRouteLine]);
+  }, [selectedRoute, dynamicRoadCoords, routeStops, showRouteLine]);
 
   // พิกัดสำหรับ FitBounds
   const stopsToFit = useMemo(() => {

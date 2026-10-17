@@ -24,6 +24,9 @@ cd ShuttelBus_RSU
 
 # 2. ติดตั้ง Dependencies
 npm install
+
+# 3. .env .example
+ให้สร้าง .env ขึ้นมาแล้วก็อบไฟล์จาก .env .example ไปใส่แล้ว config เป็นของตัวเองได้เลย
 ```
 
 ### รูปแบบที่ 1: รันด่วนทันที (Standalone / Mock Mode)
@@ -95,7 +98,7 @@ npm run dev        # Terminal 2: รัน Web Application (Port 3000)
 - เชื่อมโยง Sequence ของจุดจอด 14 อาคาร ครบถ้วนถูกต้องตั้งแต่ทางเข้าจนถึงทางออก
 
 ### 5. Authentication & Sync Test — ผ่าน HTTP 200 OK
-- ทดสอบระบบ Login ทั้งบัญชี `admin` และ `sivarit`
+- ทดสอบระบบ Login แล้ว
 - รองรับทั้งการตรวจสอบ `passwordHash` (Bcrypt) และ `password` (Plaintext ที่แก้ไขจาก Prisma Studio) พร้อมระบบคำนวณและอัปเดต Hash ให้อัตโนมัติเมื่อมีการล็อกอิน
 
 ### 6. Cross-Platform Compatibility — ทดสอบครอบคลุม

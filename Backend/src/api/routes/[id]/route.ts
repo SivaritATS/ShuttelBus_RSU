@@ -2,6 +2,7 @@ import { prisma } from "@backend/lib/prisma";
 import { requireRole } from "@backend/lib/auth";
 import { jsonError, parseId, parseJson, withErrorHandling } from "@backend/lib/api";
 import { normalizeOptionalString, routeSchema, validate } from "@backend/lib/validation";
+import { MOCK_ROUTES } from "../../../../../mockup/mockData";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -12,11 +13,15 @@ export const GET = withErrorHandling(async (_request: Request, { params }: Conte
   });
   if (!route) return Response.json({ error: { message: "ไม่พบ Route", code: "NOT_FOUND" } }, { status: 404 });
 
-  // สร้าง geometry coordinates array [ [lat, lng], ... ] สำหรับวาดเส้นทาง
-  const geometry = route.routeStops.map((rs) => [
-    Number(rs.stop.latitude),
-    Number(rs.stop.longitude),
-  ]);
+  // สร้าง geometry coordinates array [ [lat, lng], ... ] สำหรับวาดเส้นทางตามแนวถนน
+  const matchingMock = MOCK_ROUTES.find((mr) => mr.id === route.id || mr.name === route.name);
+  const geometry =
+    matchingMock?.geometry && matchingMock.geometry.length > 0
+      ? matchingMock.geometry
+      : route.routeStops.map((rs) => [
+          Number(rs.stop.latitude),
+          Number(rs.stop.longitude),
+        ]);
 
   return Response.json({
     ...route,

@@ -8,3 +8,8 @@ coverage
 *.log
 *.tsbuildinfo
 Skill/UX-UI-ProMax/SKILL.md
+.security-audit/
+.security-audit-output/
+.agents/
+.antigravity/
+

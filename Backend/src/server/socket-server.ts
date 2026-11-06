@@ -1,64 +1,84 @@
 import "dotenv/config";
 import http from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { Server, Socket } from "socket.io";
 import { PrismaClient } from "@prisma/client";
+import { verifyVehicleToken } from "../lib/vehicle-token";
 
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT || process.env.SOCKET_PORT || 10000);
-const HOST = "0.0.0.0";
+const HOST = process.env.SOCKET_HOST || "0.0.0.0";
+const INTERNAL_SECRET =
+  process.env.INTERNAL_SOCKET_SECRET || "rsu-shuttle-internal-broadcast-secret-2026";
+
+function verifyInternalSecret(headerValue: string | string[] | undefined): boolean {
+  if (!headerValue || typeof headerValue !== "string") return false;
+  if (headerValue.length !== INTERNAL_SECRET.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(headerValue), Buffer.from(INTERNAL_SECRET));
+  } catch {
+    return false;
+  }
+}
 
 const server = http.createServer(async (req, res) => {
-  // ตั้งค่า CORS headers สำหรับ HTTP API endpoint
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
-
   // Health check
   if (req.url === "/health" || req.url === "/") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok", service: "rsu-shuttle-realtime-socket", timestamp: new Date() }));
     return;
   }
 
   // HTTP webhook สำหรับให้ REST API ส่งสัญญาณ broadcast ข้ามมา socket
-  if (req.url === "/api/broadcast/location" && req.method === "POST") {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", async () => {
-      try {
-        const payload = JSON.parse(body);
-        io.to("public").to("admin").emit("vehicle:location", payload);
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, broadcasted: payload }));
-      } catch (err) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Invalid JSON" }));
-      }
-    });
-    return;
-  }
+  // ป้องกันด้วย Internal Secret Header (ไม่มี Wildcard CORS)
+  if (req.url?.startsWith("/api/broadcast/")) {
+    if (req.method === "OPTIONS") {
+      res.writeHead(405);
+      res.end();
+      return;
+    }
 
-  if (req.url === "/api/broadcast/trip" && req.method === "POST") {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", async () => {
-      try {
-        const payload = JSON.parse(body);
-        io.to("public").to("admin").emit("trip:change", payload);
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ success: true, broadcasted: payload }));
-      } catch (err) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Invalid JSON" }));
-      }
-    });
-    return;
+    const secretHeader = req.headers["x-internal-secret"];
+    if (!verifyInternalSecret(secretHeader)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Unauthorized: Invalid or missing X-Internal-Secret header" }));
+      return;
+    }
+
+    if (req.url === "/api/broadcast/location" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", async () => {
+        try {
+          const payload = JSON.parse(body);
+          io.to("public").to("admin").emit("vehicle:location", payload);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, broadcasted: payload }));
+        } catch (err) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Invalid JSON" }));
+        }
+      });
+      return;
+    }
+
+    if (req.url === "/api/broadcast/trip" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", async () => {
+        try {
+          const payload = JSON.parse(body);
+          io.to("public").to("admin").emit("trip:change", payload);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, broadcasted: payload }));
+        } catch (err) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Invalid JSON" }));
+        }
+      });
+      return;
+    }
   }
 
   res.writeHead(404);
@@ -84,11 +104,23 @@ io.on("connection", (socket: Socket) => {
     socket.emit("joined", { room, socketId: socket.id });
   });
 
-  // รถลงทะเบียน socket ประจำคัน
-  socket.on("vehicle:register", (data: { vehicleId: number; name?: string }) => {
+  // รถลงทะเบียน socket ประจำคัน (ต้องส่ง token ที่ลงนามแล้ว)
+  socket.on("vehicle:register", (data: { vehicleId: number; token?: string; name?: string }) => {
+    if (!data?.vehicleId || !data?.token) {
+      socket.emit("vehicle:error", { message: "Missing vehicleId or token" });
+      return;
+    }
+    const verifiedVehicleId = verifyVehicleToken(data.token);
+    if (!verifiedVehicleId || verifiedVehicleId !== Number(data.vehicleId)) {
+      socket.emit("vehicle:error", { message: "Unauthorized: Invalid or expired vehicle token" });
+      return;
+    }
+
+    socket.data.vehicleId = verifiedVehicleId;
     socket.join("vehicles");
     socket.join(`vehicle:${data.vehicleId}`);
     console.log(`[Socket.io] Vehicle registered: ID ${data.vehicleId} (${socket.id})`);
+    socket.emit("vehicle:registered", { vehicleId: verifiedVehicleId, socketId: socket.id });
   });
 
   // รับการอัปเดตพิกัดจากรถ/Mobile ผ่าน WebSocket
@@ -96,6 +128,7 @@ io.on("connection", (socket: Socket) => {
     "vehicle:location:update",
     async (data: {
       vehicleId: number;
+      token?: string;
       latitude: number;
       longitude: number;
       speed?: number;
@@ -103,7 +136,17 @@ io.on("connection", (socket: Socket) => {
       tripId?: number;
     }) => {
       try {
-        const { vehicleId, latitude, longitude, speed, heading, tripId } = data;
+        const { vehicleId, token, latitude, longitude, speed, heading, tripId } = data;
+
+        // ตรวจสอบความถูกต้องของสิทธิ์การส่งพิกัดรถ
+        const authedVehicleId = socket.data.vehicleId || (token ? verifyVehicleToken(token) : null);
+        if (!authedVehicleId || authedVehicleId !== Number(vehicleId)) {
+          socket.emit("vehicle:location:error", {
+            message: "Unauthorized: Invalid, missing, or mismatched vehicle token",
+          });
+          return;
+        }
+
         const now = new Date();
 
         // 1. บันทึกลงตาราง Vehicle
@@ -160,8 +203,14 @@ io.on("connection", (socket: Socket) => {
   );
 
   // เริ่มต้นทริป (Start Trip) ผ่าน Socket
-  socket.on("trip:start", async (data: { vehicleId: number; routeId: number }) => {
+  socket.on("trip:start", async (data: { vehicleId: number; routeId: number; token?: string }) => {
     try {
+      const authedVehicleId = socket.data.vehicleId || (data?.token ? verifyVehicleToken(data.token) : null);
+      if (!authedVehicleId || authedVehicleId !== Number(data.vehicleId)) {
+        socket.emit("trip:error", { message: "Unauthorized: Invalid or mismatched vehicle token" });
+        return;
+      }
+
       const now = new Date();
       const trip = await prisma.trip.create({
         data: {
@@ -190,8 +239,28 @@ io.on("connection", (socket: Socket) => {
   });
 
   // จบทริป (End Trip) ผ่าน Socket
-  socket.on("trip:end", async (data: { tripId: number }) => {
+  socket.on("trip:end", async (data: { tripId: number; token?: string }) => {
     try {
+      if (!data?.tripId) {
+        socket.emit("trip:error", { message: "Missing tripId" });
+        return;
+      }
+
+      const existingTrip = await prisma.trip.findUnique({
+        where: { id: Number(data.tripId) },
+      });
+
+      if (!existingTrip) {
+        socket.emit("trip:error", { message: "Trip not found" });
+        return;
+      }
+
+      const authedVehicleId = socket.data.vehicleId || (data?.token ? verifyVehicleToken(data.token) : null);
+      if (!authedVehicleId || authedVehicleId !== existingTrip.vehicleId) {
+        socket.emit("trip:error", { message: "Unauthorized: Only the assigned vehicle can end this trip" });
+        return;
+      }
+
       const now = new Date();
       const trip = await prisma.trip.update({
         where: { id: data.tripId },

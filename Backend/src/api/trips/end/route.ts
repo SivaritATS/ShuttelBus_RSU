@@ -1,5 +1,6 @@
 import { prisma } from "@backend/lib/prisma";
 import { parseJson, withErrorHandling, ApiError } from "@backend/lib/api";
+import { requireVehicleOrAdmin } from "@backend/lib/auth";
 import { broadcastTrip } from "@backend/lib/realtime";
 
 export const POST = withErrorHandling(async (request: Request) => {
@@ -23,6 +24,9 @@ export const POST = withErrorHandling(async (request: Request) => {
   }
 
   if (!trip) throw new ApiError(404, "ไม่พบทริปที่กำลังดำเนินการ");
+
+  // อนุญาตเฉพาะ Admin หรือ Vehicle ที่เป็นเจ้าของทริปนี้
+  await requireVehicleOrAdmin(request, trip.vehicleId);
 
   const now = new Date();
   const updatedTrip = await prisma.trip.update({

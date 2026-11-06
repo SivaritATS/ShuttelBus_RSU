@@ -147,7 +147,7 @@ export default function AdminDashboard() {
     }, "จบทริปเรียบร้อยแล้ว");
   };
 
-  const handleSimulateMove = (vehicleId: number) => {
+  const handleSimulateMove = async (vehicleId: number) => {
     const target = vehicles.find((v) => v.id === vehicleId);
     if (!target) return;
 
@@ -159,19 +159,28 @@ export default function AdminDashboard() {
     const nextLat = Number((currentLat + deltaLat).toFixed(7));
     const nextLng = Number((currentLng + deltaLng).toFixed(7));
 
-    // ส่งสัญญาณ Realtime ไปยัง Socket Server ทันที
-    sendLocationUpdate({
-      vehicleId: target.id,
-      latitude: nextLat,
-      longitude: nextLng,
-      speed: Math.floor(Math.random() * 20) + 15,
-      heading: Math.floor(Math.random() * 360),
-    });
+    try {
+      await api("/api/vehicles/location", {
+        method: "POST",
+        body: JSON.stringify({
+          vehicleId: target.id,
+          latitude: nextLat,
+          longitude: nextLng,
+          speed: Math.floor(Math.random() * 20) + 15,
+          heading: Math.floor(Math.random() * 360),
+        }),
+      });
 
-    setNotice({
-      kind: "success",
-      message: `จำลองส่ง GPS ให้ ${target.name} (${nextLat}, ${nextLng}) เรียบร้อย`,
-    });
+      setNotice({
+        kind: "success",
+        message: `จำลองส่ง GPS ให้ ${target.name} (${nextLat}, ${nextLng}) เรียบร้อย`,
+      });
+    } catch (err) {
+      setNotice({
+        kind: "error",
+        message: err instanceof Error ? err.message : "ส่งพิกัดล้มเหลว",
+      });
+    }
   };
 
   return (

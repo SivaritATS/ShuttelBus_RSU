@@ -78,14 +78,51 @@ npm run dev        # Terminal 2: รัน Web Application (Port 3000)
 
 ---
 
+## มาตรการความปลอดภัยของระบบ (Security & Hardening)
+
+ระบบได้รับการตรวจสอบและปรับปรุงความปลอดภัยตามมาตรฐานความปลอดภัย (Security Audit) เรียบร้อยแล้ว โดยมีมาตรการสำคัญดังนี้:
+
+1. **การปกป้องรหัสผ่านและข้อมูลรับรองผู้ใช้ (Password Security)**
+   - ลบคอลัมน์รหัสผ่านแบบ Plaintext ออกจากฐานข้อมูลอย่างถาวร
+   - รหัสผ่านทั้งหมดถูกเข้ารหัสด้วย **Bcrypt (Cost factor 12)** และตรวจสอบผ่าน `compare()` เท่านั้น
+   - การจัดการ Session ใช้ Token สุ่มความยาว 32 bytes แฮชด้วย SHA-256 และส่งผ่านคุกกี้ที่เปิดแฟล็ก `httpOnly`, `sameSite=lax` และ `secure` เมื่ออยู่บน Production
+
+2. **การป้องกันฐานข้อมูลรั่วไหลสู่ฝั่ง Client (Client-side Asset Protection)**
+   - ตัดการ map `DATABASE_URL` ใน `next.config.ts` ออกทั้งหมด ข้อมูล Connection String จึงไม่ถูก compile หรือ Bundle ลงในไฟล์ JavaScript ฝั่งเบราว์เซอร์
+
+3. **การยืนยันตัวตนอุปกรณ์ส่งพิกัดด้วยลายเซ็นดิจิทัล (HMAC-SHA256 Vehicle Tokens)**
+   - อุปกรณ์ประจำรถหรือแอปคนขับต้องใช้ Bearer Token ที่ลงนามดิจิทัลด้วย **HMAC-SHA256** (`vhk_<vehicleId>_<timestamp>_<signature>`)
+   - ตรวจสอบความถูกต้องของ Signature ด้วย `timingSafeEqual` (Constant-time Comparison) เพื่อป้องกัน Timing Attack
+   - Token มีอายุการใช้งาน (Expiration check) และสงวนสิทธิ์การออก Token ให้เฉพาะผู้ดูแลระบบ (`ADMIN`) เท่านั้น
+
+4. **การป้องกันการปลอมพิกัด GPS (Anti-GPS Spoofing & Telemetry Protection)**
+   - Endpoint `POST /api/vehicles/location` และ WebSocket event `vehicle:location:update` ต้องมี Vehicle Token หรือ Admin Session
+   - มีการตรวจสอบ Binding อย่างเข้มงวดว่า Token ต้องตรงกับ `vehicleId` ของรถคันนั้นจริง ไม่อนุญาตให้ส่งพิกัดแทนรถคันอื่น
+
+5. **การควบคุมสิทธิ์วงจรการเดินรถ (Trip Lifecycle Access Control)**
+   - การเริ่มทริป (`/api/trips/start`, `trip:start`) และการจบทริป (`/api/trips/end`, `trip:end`) ต้องยืนยันตัวตนด้วยสิทธิ์ Admin หรือเป็นรถคันที่ได้รับมอบหมายเท่านั้น ป้องกันผู้ไม่หวังดีส่งคำสั่งหยุดทริปหรือสลับสายรถกลางคัน
+
+6. **การป้องกัน Socket Realtime Server และ Webhook ภายใน (Webhook Security)**
+   - ป้องกัน Broadcast Webhook ระหว่าง Next.js และ Socket.IO ด้วย Header ลับเฉพาะ `X-Internal-Secret`
+   - ยกเลิก Wildcard CORS (`Access-Control-Allow-Origin: *`) บน Webhook ภายใน ป้องกันการยิง Request ข้ามไซต์จากภายนอก
+
+---
+
 ## สรุปผลการทดสอบระบบ (Test & Verification Results)
 
 โปรเจกต์นี้ได้รับการทดสอบและตรวจสอบความถูกต้องแล้วในทุกระดับ โดยมีผลสรุปดังนี้:
 
-### 1. Unit Tests (`npm test`) — ผ่านครบ 3/3 รายการ
-- `accepts a valid stop with campus coordinates`: ตรวจสอบความถูกต้องของการรับค่าพิกัดภายในมหาวิทยาลัย
-- `rejects coordinates outside the earth`: ป้องกันและปฏิเสธค่าพิกัดที่อยู่นอกช่วงพิกัดโลก (-90 ถึง 90 และ -180 ถึง 180)
-- `requires a six-digit hex route color`: ตรวจสอบรหัสสีเส้นทางเดินรถให้อยู่ในรูปแบบ Hex Color Code (`#RRGGBB`)
+### 1. Unit & Security Tests (`npm test`) — ผ่านครบ 8/8 รายการ
+- **Core Input Validation (3/3 ผ่าน)**:
+  - `accepts a valid stop with campus coordinates`: ตรวจสอบความถูกต้องของการรับค่าพิกัดภายในมหาวิทยาลัย
+  - `rejects coordinates outside the earth`: ป้องกันและปฏิเสธค่าพิกัดที่อยู่นอกช่วงพิกัดโลก (-90 ถึง 90 และ -180 ถึง 180)
+  - `requires a six-digit hex route color`: ตรวจสอบรหัสสีเส้นทางเดินรถให้อยู่ในรูปแบบ Hex Color Code (`#RRGGBB`)
+- **Vehicle Token & Cryptographic Security (5/5 ผ่าน)**:
+  - `generates and verifies a valid HMAC-signed vehicle token`: สร้างและตรวจสอบ Token ที่มีลายเซ็นดิจิทัลถูกต้อง
+  - `rejects forged tokens using unverified suffix pattern`: สกัดกั้นและปฏิเสธการพยายามปลอม Token จากรูปแบบ Suffix
+  - `rejects tokens with modified vehicle ID or signature tampering`: ตรวจจับการดัดแปลง Vehicle ID หรือ Signature
+  - `rejects expired or future tokens`: ปฏิเสธ Token ที่หมดอายุหรือระบุเวลาผิดปกติ
+  - `rejects malformed and null/undefined inputs`: รองรับและดักจับ Input ผิดปกติอย่างปลอดภัย
 
 ### 2. Type Checking (`npm run typecheck`) — ผ่าน 100%
 - ผ่านการตรวจสอบความปลอดภัยของ Type ด้วย `tsc --noEmit` ไร้ข้อผิดพลาด (0 errors)
@@ -93,13 +130,19 @@ npm run dev        # Terminal 2: รัน Web Application (Port 3000)
 ### 3. Production Build (`npm run build`) — ผ่านทั้ง 22 Routes
 - คอมไพล์สำเร็จทั้ง Static Pages และ Dynamic API Route Handlers 22 routes ด้วย Turbopack
 
-### 4. Database Migrations & Seeding — ผ่านครบ 5 ชุด
-- Deploy ครบทั้ง 5 Migrations (`init`, `add_auth`, `add_vehicle_location`, `add_tracking_domain`, `add_plain_password_to_user`)
+### 4. Database Migrations & Seeding — ผ่านครบ 6 ชุด
+- Deploy ครบทั้ง 6 Migrations:
+  - `20260906120000_init`
+  - `20260910130000_add_auth`
+  - `20260910140000_add_vehicle_location`
+  - `20260910150000_add_tracking_domain`
+  - `20261003130000_add_plain_password_to_user`
+  - `20261106200000_drop_plain_password_from_user` (ลบคอลัมน์ plain password ออกเพื่อความปลอดภัยสูงสุด)
 - เชื่อมโยง Sequence ของจุดจอด 14 อาคาร ครบถ้วนถูกต้องตั้งแต่ทางเข้าจนถึงทางออก
 
-### 5. Authentication & Sync Test — ผ่าน HTTP 200 OK
-- ทดสอบระบบ Login แล้ว
-- รองรับทั้งการตรวจสอบ `passwordHash` (Bcrypt) และ `password` (Plaintext ที่แก้ไขจาก Prisma Studio) พร้อมระบบคำนวณและอัปเดต Hash ให้อัตโนมัติเมื่อมีการล็อกอิน
+### 5. Authentication & Access Control Test — ผ่าน 100%
+- ทดสอบระบบ Login ด้วย `passwordHash` (Bcrypt) และ Session Cookie ความปลอดภัยสูง
+- ระบบ Role-based Access Control (RBAC) ตรวจสอบสิทธิ์ Admin สำหรับการจัดการ Route, Stop, Vehicle และออก Token รถ
 
 ### 6. Cross-Platform Compatibility — ทดสอบครอบคลุม
 - **macOS (Apple Silicon M1-M4)**: แก้ไขปัญหา Manifest error ด้วย `platform: linux/amd64` ใน `docker-compose.yml` ทำให้เปิด Container ได้ทันที

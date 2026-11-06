@@ -4,6 +4,9 @@ import { compare, hash } from "bcryptjs";
 import type { UserRole } from "@prisma/client";
 import { prisma } from "./prisma";
 import { ApiError } from "./api";
+import { generateVehicleToken, verifyVehicleToken } from "./vehicle-token";
+
+export { generateVehicleToken, verifyVehicleToken };
 
 export const SESSION_COOKIE_NAME = "shuttle_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
@@ -59,33 +62,8 @@ export async function authenticate(username: string, password: string) {
   const user = await prisma.user.findUnique({ where: { username: normalizeUsername(username) } });
   if (!user || !user.isActive) return null;
 
-  const userRecord = user as typeof user & { password?: string | null };
   const isHashMatch = await compare(password, user.passwordHash).catch(() => false);
-  const isPlainMatch = Boolean(userRecord.password && userRecord.password === password);
-
-  if (!isHashMatch && !isPlainMatch) return null;
-
-  // หากมีการแก้ไข password ใน Prisma Studio ตรงๆ ให้อัปเดต passwordHash ให้ตรงกันอัตโนมัติ
-  if (isPlainMatch && !isHashMatch) {
-    try {
-      const newHash = await hash(password, 12);
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { passwordHash: newHash },
-      });
-    } catch (e) {
-      console.warn("Could not sync passwordHash:", e);
-    }
-  } else if (isHashMatch && userRecord.password && userRecord.password !== password) {
-    try {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { password } as any,
-      });
-    } catch (e) {
-      console.warn("Could not sync plain password:", e);
-    }
-  }
+  if (!isHashMatch) return null;
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
@@ -113,6 +91,7 @@ export async function hashPassword(password: string) {
   return hash(password, 12);
 }
 
+// Vehicle Token Generation & Verification (HMAC-SHA256 Signed)
 // Vehicle Token Authentication สำหรับ Mobile App และ Driver App
 export async function authenticateVehicle(identifier: { vehicleId?: number; name?: string }) {
   const vehicle = await prisma.vehicle.findFirst({
@@ -126,8 +105,7 @@ export async function authenticateVehicle(identifier: { vehicleId?: number; name
 
   if (!vehicle) return null;
 
-  // สร้าง device token
-  const token = `vhk_${randomBytes(24).toString("hex")}_${vehicle.id}`;
+  const token = generateVehicleToken(vehicle.id);
   return { token, vehicle };
 }
 
@@ -138,11 +116,10 @@ export async function requireVehicleAuth(request: Request) {
   }
 
   const token = authHeader.replace("Bearer ", "").trim();
-  const parts = token.split("_");
-  const vehicleId = Number(parts[parts.length - 1]);
+  const vehicleId = verifyVehicleToken(token);
 
-  if (isNaN(vehicleId)) {
-    throw new ApiError(401, "Invalid vehicle token format");
+  if (!vehicleId) {
+    throw new ApiError(401, "Invalid, forged, or expired vehicle token");
   }
 
   const vehicle = await prisma.vehicle.findUnique({
@@ -155,4 +132,20 @@ export async function requireVehicleAuth(request: Request) {
   }
 
   return vehicle;
+}
+
+export async function requireVehicleOrAdmin(request: Request, expectedVehicleId?: number) {
+  // 1. ตรวจสอบว่ามี Admin session หรือไม่
+  const user = await getCurrentUser();
+  if (user && user.role === "ADMIN") {
+    return { type: "admin" as const, user };
+  }
+
+  // 2. ถ้าไม่ใช่ Admin ตรวจสอบ Vehicle Token
+  const vehicle = await requireVehicleAuth(request);
+  if (expectedVehicleId !== undefined && vehicle.id !== expectedVehicleId) {
+    throw new ApiError(403, "คุณไม่มีสิทธิ์จัดการข้อมูลของรถคันอื่น");
+  }
+
+  return { type: "vehicle" as const, vehicle };
 }

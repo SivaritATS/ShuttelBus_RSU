@@ -1,5 +1,6 @@
 import { prisma } from "@backend/lib/prisma";
 import { parseJson, withErrorHandling, ApiError } from "@backend/lib/api";
+import { requireVehicleOrAdmin } from "@backend/lib/auth";
 import { broadcastLocation } from "@backend/lib/realtime";
 
 export const POST = withErrorHandling(async (request: Request) => {
@@ -15,6 +16,10 @@ export const POST = withErrorHandling(async (request: Request) => {
   if (!body.vehicleId || body.latitude === undefined || body.longitude === undefined) {
     throw new ApiError(400, "กรุณาระบุ vehicleId, latitude และ longitude");
   }
+
+  // ป้องกัน Unauthenticated GPS Spoofing:
+  // อนุญาตเฉพาะ Admin หรือ Vehicle ที่มี Token ตรงกับ body.vehicleId
+  await requireVehicleOrAdmin(request, Number(body.vehicleId));
 
   const now = new Date();
   const vehicle = await prisma.vehicle.update({

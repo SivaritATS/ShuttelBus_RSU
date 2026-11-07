@@ -8,9 +8,16 @@ coverage
 *.log
 *.tsbuildinfo
 Skill/UX-UI-ProMax/SKILL.md
-.security-audit/
-.security-audit-output/
+# Agent skills, tooling & outputs
+.agent/
 .agents/
 .antigravity/
+.security-audit/
+.security-audit-output/
 .humanizer/
+.taste-skill/
+.omniroute/
+.ponytail/
+graphify-out/
+skills-lock.json
 

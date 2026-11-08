@@ -239,6 +239,11 @@ export default function PublicExplorer() {
 
   // ฟังก์ชันโฟกัสและติดตามรถตาม GPS มือถือ
   const handleFocusVehicle = (vehicle: Vehicle) => {
+    const isLive = isLiveVehicle(vehicle);
+    if (!isLive || !vehicle.latitude || !vehicle.longitude) {
+      setActiveItemName(`${vehicle.name} (รอคนขับแชร์พิกัด GPS จากมือถือ)`);
+      return;
+    }
     setFollowedVehicleId(vehicle.id);
     const lat = Number(vehicle.latitude);
     const lng = Number(vehicle.longitude);
@@ -541,17 +546,20 @@ export default function PublicExplorer() {
                         <button
                           type="button"
                           className="btn-locate"
+                          disabled={!isLive}
                           style={{
                             background: isFollowed ? "#165dff" : undefined,
-                            color: isFollowed ? "#ffffff" : undefined,
+                            color: isFollowed ? "#ffffff" : isLive ? undefined : "#94a3b8",
                             borderColor: isFollowed ? "#165dff" : undefined,
+                            opacity: isLive ? 1 : 0.6,
+                            cursor: isLive ? "pointer" : "default",
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleFocusVehicle(v);
+                            if (isLive) handleFocusVehicle(v);
                           }}
                         >
-                          {isFollowed ? "🎯 กำลังติดตาม" : isLive ? "🎯 ติดตามพิกัด" : "ดูตำแหน่ง"}
+                          {isFollowed ? "🎯 กำลังติดตาม" : isLive ? "🎯 ติดตามพิกัด" : "รอเปิด GPS"}
                         </button>
                       </div>
 
@@ -559,23 +567,21 @@ export default function PublicExplorer() {
                         <div className="vehicle-coords">
                           {isLive ? (
                             <>
-                              <span style={{ color: "#059669", fontWeight: 700 }}>GPS สด: </span>
+                              <span style={{ color: "#059669", fontWeight: 700 }}>GPS สดจากมือถือ: </span>
                               {Number(v.latitude).toFixed(6)}, {Number(v.longitude).toFixed(6)}
                               {typeof v.speed === "number" && v.speed > 0 ? ` · ⚡ ${Number(v.speed).toFixed(1)} km/h` : ""}
                             </>
                           ) : (
                             <>
-                              <span style={{ color: "#64748b" }}>ตำแหน่งล่าสุด: </span>
-                              {v.latitude && v.longitude ? `${Number(v.latitude).toFixed(6)}, ${Number(v.longitude).toFixed(6)}` : "รอพิกัด"}
+                              <span style={{ color: "#64748b" }}>สถานะพิกัด: </span>
+                              รอสัญญาณ GPS จากมือถือคนขับ
                             </>
                           )}
                         </div>
                         <div className="vehicle-time">
                           {isLive
                             ? "กำลังแชร์สด"
-                            : v.lastSeenAt
-                            ? `ล่าสุด ${new Date(v.lastSeenAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`
-                            : "รอเริ่มรอบ"}
+                            : "ออฟไลน์"}
                         </div>
                       </div>
                     </div>

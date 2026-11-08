@@ -39,6 +39,12 @@ export default function PublicExplorer() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [mounted, setMounted] = useState(false);
 
+  // Search, Focus & Auto-follow
+  const [searchQuery, setSearchQuery] = useState("");
+  const [focusTarget, setFocusTarget] = useState<[number, number] | null>(null);
+  const [activeItemName, setActiveItemName] = useState<string>("");
+  const [followedVehicleId, setFollowedVehicleId] = useState<number | null>(null);
+
   // Realtime Socket Callback
   const handleRealtimeLocation = useCallback((incomingVehicle: Vehicle) => {
     setVehicles((prev) => {
@@ -51,15 +57,28 @@ export default function PublicExplorer() {
       return [...prev, incomingVehicle];
     });
     setLastUpdated(new Date());
+
+    // เลื่อนพิกัดกล้องตามตำแหน่ง GPS จากมือถือคนขับทันที
+    const lat = Number(incomingVehicle.latitude);
+    const lng = Number(incomingVehicle.longitude);
+    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+      setFollowedVehicleId((currFollowId) => {
+        if (currFollowId === null || currFollowId === incomingVehicle.id) {
+          setFocusTarget([lat, lng]);
+          setActiveItemName(`${incomingVehicle.name} (สดจากมือถือ)`);
+          return incomingVehicle.id;
+        }
+        return currFollowId;
+      });
+    }
   }, []);
 
   const handleTripChange = useCallback((data: { event: string; trip: any }) => {
     console.log("[Realtime] Trip change event:", data);
-    // รีเฟรชตำแหน่งรถเมื่อมีทริปใหม่หรือจบทริป
     loadVehicles();
   }, []);
 
-  // เชื่อมต่อ Socket.IO ห้อง public
+  // เชื่อมต่อ Socket.IO ห้อง public (Render Backend)
   const { isConnected: isSocketConnected } = useRealtimeSocket({
     room: "public",
     onLocationUpdate: handleRealtimeLocation,
@@ -71,17 +90,21 @@ export default function PublicExplorer() {
   const [showVehicles, setShowVehicles] = useState(true);
   const [showRouteLine, setShowRouteLine] = useState(true);
 
-  // Search & Focus
-  const [searchQuery, setSearchQuery] = useState("");
-  const [focusTarget, setFocusTarget] = useState<[number, number] | null>(null);
-  const [activeItemName, setActiveItemName] = useState<string>("");
-
   // โหลดตำแหน่งรถราง (Live Vehicles) ผ่าน REST API เป็น Fallback
   const loadVehicles = useCallback(async () => {
     setVehiclesLoading(true);
     try {
       const data = await getJson<Vehicle[]>("/api/vehicles/locations");
-      setVehicles(data);
+      setVehicles((prev) => {
+        if (!data || data.length === 0) return prev;
+        return data.map((remoteV) => {
+          const existing = prev.find((p) => p.id === remoteV.id);
+          if (!existing) return remoteV;
+          const existingTime = existing.lastSeenAt ? new Date(existing.lastSeenAt).getTime() : 0;
+          const remoteTime = remoteV.lastSeenAt ? new Date(remoteV.lastSeenAt).getTime() : 0;
+          return existingTime > remoteTime ? existing : { ...existing, ...remoteV };
+        });
+      });
       setLastUpdated(new Date());
     } catch (err) {
       console.error(err);
@@ -182,6 +205,7 @@ export default function PublicExplorer() {
 
   // ฟังก์ชันโฟกัสไปยังจุดจอด
   const handleFocusStop = (stop: Stop) => {
+    setFollowedVehicleId(null);
     const lat = Number(stop.latitude);
     const lng = Number(stop.longitude);
     if (!isNaN(lat) && !isNaN(lng)) {
@@ -195,13 +219,14 @@ export default function PublicExplorer() {
     }
   };
 
-  // ฟังก์ชันโฟกัสไปยังรถ
+  // ฟังก์ชันโฟกัสและติดตามรถตาม GPS มือถือ
   const handleFocusVehicle = (vehicle: Vehicle) => {
+    setFollowedVehicleId(vehicle.id);
     const lat = Number(vehicle.latitude);
     const lng = Number(vehicle.longitude);
     if (!isNaN(lat) && !isNaN(lng)) {
       setFocusTarget([lat, lng]);
-      setActiveItemName(vehicle.name);
+      setActiveItemName(`${vehicle.name} (ติดตาม GPS สด)`);
       const mapEl = document.getElementById("main-map-section");
       if (mapEl) {
         mapEl.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -211,6 +236,7 @@ export default function PublicExplorer() {
 
   // รีเซ็ตมุมมองแผนที่
   const handleResetMap = () => {
+    setFollowedVehicleId(null);
     setFocusTarget(null);
     setActiveItemName("");
   };
@@ -355,6 +381,25 @@ export default function PublicExplorer() {
             </label>
             <button
               type="button"
+              className={`button-reset-view ${followedVehicleId ? "active-follow" : ""}`}
+              onClick={() => {
+                if (followedVehicleId) {
+                  handleResetMap();
+                } else if (vehicles.length > 0) {
+                  handleFocusVehicle(vehicles[0]);
+                }
+              }}
+              title="ติดตามรถรางตามพิกัดมือถือสด"
+              style={{
+                background: followedVehicleId ? "#165dff" : undefined,
+                color: followedVehicleId ? "#ffffff" : undefined,
+                fontWeight: 600,
+              }}
+            >
+              {followedVehicleId ? "🎯 กำลังติดตามพิกัดสด" : "🎯 ติดตามรถสด"}
+            </button>
+            <button
+              type="button"
               className="button-reset-view"
               onClick={handleResetMap}
               title="ดูภาพรวมทั้งมหาวิทยาลัย"
@@ -371,7 +416,7 @@ export default function PublicExplorer() {
           <div className="map-outer-card">
             {activeItemName && (
               <div className="focus-indicator-banner">
-                <span>กำลังโฟกัส: <strong>{activeItemName}</strong></span>
+                <span>{followedVehicleId ? "🎯 กำลังติดตามพิกัดสดจากมือถือ: " : "กำลังโฟกัส: "}<strong>{activeItemName}</strong></span>
                 <button
                   type="button"
                   onClick={handleResetMap}
@@ -387,6 +432,7 @@ export default function PublicExplorer() {
               vehicles={vehicles}
               selectedRoute={selectedRoute}
               focusTarget={focusTarget}
+              followedVehicleId={followedVehicleId}
               showStops={showStops}
               showVehicles={showVehicles}
               showRouteLine={showRouteLine}

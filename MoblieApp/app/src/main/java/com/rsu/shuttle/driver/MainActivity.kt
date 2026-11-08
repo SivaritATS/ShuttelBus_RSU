@@ -16,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.rsu.shuttle.driver.data.preferences.AppPreferences
-import com.rsu.shuttle.driver.service.LocationTrackingService
 import com.rsu.shuttle.driver.ui.screens.LoginScreen
 import com.rsu.shuttle.driver.ui.screens.SettingsScreen
 import com.rsu.shuttle.driver.ui.screens.TrackingScreen
@@ -66,9 +65,14 @@ class MainActivity : ComponentActivity() {
                     val permissionLauncher = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.RequestMultiplePermissions()
                     ) { permissions ->
-                        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+                        val fineLocationGranted =
+                            permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
                         if (!fineLocationGranted) {
-                            Toast.makeText(this, "จำเป็นต้องเปิดสิทธิ์พิกัด GPS เพื่อแชร์ตำแหน่งรถบัส", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                this,
+                                "จำเป็นต้องเปิดสิทธิ์พิกัด GPS เพื่อแชร์ตำแหน่งรถบัส",
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
                     }
 
@@ -124,4 +128,5 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 

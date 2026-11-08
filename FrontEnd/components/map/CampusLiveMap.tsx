@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import {
   CircleMarker,
@@ -20,26 +20,35 @@ const DEFAULT_ZOOM = 16;
 function MapController({
   focusTarget,
   fitStops,
+  followedVehicleId,
 }: {
   focusTarget: [number, number] | null;
   fitStops: Stop[];
+  followedVehicleId?: number | null;
 }) {
   const map = useMap();
+  const initialFitDone = useRef(false);
 
   useEffect(() => {
     if (focusTarget) {
-      map.flyTo(focusTarget, 18, { duration: 1.2 });
+      const currentZoom = map.getZoom();
+      if (currentZoom < 15) {
+        map.flyTo(focusTarget, 17, { duration: 1.2 });
+      } else {
+        map.panTo(focusTarget, { animate: true, duration: 0.8 });
+      }
     }
   }, [focusTarget, map]);
 
   useEffect(() => {
-    if (!focusTarget && fitStops.length > 0) {
+    if (!focusTarget && !followedVehicleId && fitStops.length > 0 && !initialFitDone.current) {
       const bounds = fitStops.map(
         (s) => [Number(s.latitude), Number(s.longitude)] as [number, number]
       );
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+      initialFitDone.current = true;
     }
-  }, [fitStops, focusTarget, map]);
+  }, [fitStops, focusTarget, followedVehicleId, map]);
 
   return null;
 }
@@ -50,6 +59,7 @@ interface CampusLiveMapProps {
   vehicles: Vehicle[];
   selectedRoute: Route | null;
   focusTarget: [number, number] | null;
+  followedVehicleId?: number | null;
   showStops?: boolean;
   showVehicles?: boolean;
   showRouteLine?: boolean;
@@ -63,6 +73,7 @@ export default function CampusLiveMap({
   vehicles,
   selectedRoute,
   focusTarget,
+  followedVehicleId,
   showStops = true,
   showVehicles = true,
   showRouteLine = true,
@@ -233,7 +244,11 @@ export default function CampusLiveMap({
           maxZoom={19}
         />
 
-        <MapController focusTarget={focusTarget} fitStops={stopsToFit} />
+        <MapController
+          focusTarget={focusTarget}
+          fitStops={stopsToFit}
+          followedVehicleId={followedVehicleId}
+        />
 
         {/* เส้นทางเดินรถ (Route Polyline) */}
         {polylineCoords.length > 1 && (

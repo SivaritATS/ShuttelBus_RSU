@@ -21,4 +21,15 @@ Skill/UX-UI-ProMax/SKILL.md
 graphify-out/
 skills-lock.json
 docs/
+# Android
+.gradle/
+build/
+*/build/
+*/*/build/
+*.apk
+*.aab
+.idea/
+*.iml
+local.properties
+
 

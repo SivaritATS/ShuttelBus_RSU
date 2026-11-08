@@ -1,10 +1,7 @@
 import { parseJson, withErrorHandling, ApiError } from "@backend/lib/api";
-import { authenticateVehicle, requireRole } from "@backend/lib/auth";
+import { authenticateVehicle } from "@backend/lib/auth";
 
 export const POST = withErrorHandling(async (request: Request) => {
-  // เฉพาะ ADMIN เท่านั้นที่สามารถออก Vehicle Token ให้กับอุปกรณ์ประจำรถได้
-  await requireRole("ADMIN");
-
   const body = await parseJson<{ vehicleId?: number; name?: string }>(request);
   if (!body.vehicleId && !body.name) {
     throw new ApiError(400, "กรุณาระบุ vehicleId หรือ name");
@@ -32,3 +29,4 @@ export const POST = withErrorHandling(async (request: Request) => {
     },
   });
 });
+

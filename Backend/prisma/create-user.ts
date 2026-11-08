@@ -14,8 +14,8 @@ async function main() {
   const password = getOption("--password");
   const roleValue = getOption("--role")?.toUpperCase() || "USER";
 
-  if (!username || !password || !["USER", "ADMIN"].includes(roleValue)) {
-    throw new Error("Usage: npm run db:user -- --username admin --password 'change-me' --role ADMIN");
+  if (!username || !password || !["USER", "ADMIN", "DRIVER"].includes(roleValue)) {
+    throw new Error("Usage: npm run db:user -- --username driver1 --password 'change-me' --role DRIVER");
   }
   if (username.length > 100) throw new Error("Username ต้องยาวไม่เกิน 100 ตัวอักษร");
   if (password.length < 8) throw new Error("Password ต้องมีอย่างน้อย 8 ตัวอักษร");

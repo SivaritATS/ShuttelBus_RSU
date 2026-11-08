@@ -3,7 +3,8 @@ import http from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { Server, Socket } from "socket.io";
 import { PrismaClient } from "@prisma/client";
-import { verifyVehicleToken } from "../lib/vehicle-token";
+import { compare } from "bcryptjs";
+import { generateVehicleToken, verifyVehicleToken } from "../lib/vehicle-token";
 
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT || process.env.SOCKET_PORT || 10000);
@@ -22,11 +23,138 @@ function verifyInternalSecret(headerValue: string | string[] | undefined): boole
 }
 
 const server = http.createServer(async (req, res) => {
-  // Health check
-  if (req.url === "/health" || req.url === "/") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+  // Global CORS Headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-vehicle-token, x-internal-secret");
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // Health check endpoints
+  if (req.url === "/health" || req.url === "/api/health" || req.url === "/") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok", service: "rsu-shuttle-realtime-socket", timestamp: new Date() }));
+    res.end(JSON.stringify({ status: "ok", service: "rsu-shuttle-realtime-socket", database: "connected", timestamp: new Date() }));
+    return;
+  }
+
+  // REST API Login for Mobile / Web clients
+  if (req.url === "/api/auth/login" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      try {
+        const { username, password } = JSON.parse(body || "{}");
+        if (!username || !password) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: { message: "กรุณาระบุ Username และ Password" } }));
+          return;
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { username: username.trim().toLowerCase() },
+        });
+
+        if (!user || !user.isActive) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: { message: "Username หรือ Password ไม่ถูกต้อง" } }));
+          return;
+        }
+
+        const isMatch = await compare(password, user.passwordHash).catch(() => false);
+        if (!isMatch) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: { message: "Username หรือ Password ไม่ถูกต้อง" } }));
+          return;
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+          },
+        }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "เกิดข้อผิดพลาดภายในระบบ" } }));
+      }
+    });
+    return;
+  }
+
+  // REST API: Get Vehicle Token
+  if (req.url === "/api/auth/vehicle" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      try {
+        const { vehicleId, name } = JSON.parse(body || "{}");
+        const vehicle = await prisma.vehicle.findFirst({
+          where: {
+            ...(vehicleId ? { id: Number(vehicleId) } : {}),
+            ...(name ? { name } : {}),
+            isActive: true,
+          },
+          include: { route: true },
+        });
+
+        if (!vehicle) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: { message: "ไม่พบข้อมูลรถในระบบ หรือรถถูกระงับการใช้งาน" } }));
+          return;
+        }
+
+        const token = generateVehicleToken(vehicle.id);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          success: true,
+          token,
+          vehicle: {
+            id: vehicle.id,
+            name: vehicle.name,
+            type: vehicle.type,
+            routeId: vehicle.routeId,
+            route: vehicle.route,
+            isActive: vehicle.isActive,
+          },
+        }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "เกิดข้อผิดพลาดในการออกสิทธิ์รถ" } }));
+      }
+    });
+    return;
+  }
+
+  // REST API: Get Active Vehicle Locations
+  if (req.url === "/api/vehicles/locations" && req.method === "GET") {
+    try {
+      const vehicles = await prisma.vehicle.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          routeId: true,
+          latitude: true,
+          longitude: true,
+          lastSeenAt: true,
+          isActive: true,
+          route: { select: { id: true, name: true, color: true } },
+        },
+        orderBy: { name: "asc" },
+      });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(vehicles));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Failed to fetch vehicle locations" }));
+    }
     return;
   }
 
@@ -79,6 +207,60 @@ const server = http.createServer(async (req, res) => {
       });
       return;
     }
+  }
+
+  // HTTP REST Location update fallback for Mobile
+  if (req.url === "/api/vehicles/location" && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      try {
+        const payload = JSON.parse(body || "{}");
+        const token = (payload.token || req.headers["x-vehicle-token"]) as string;
+        const verifiedVehicleId = verifyVehicleToken(token);
+        if (!verifiedVehicleId || verifiedVehicleId !== Number(payload.vehicleId)) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: { message: "Unauthorized: Invalid or expired vehicle token" } }));
+          return;
+        }
+
+        const now = new Date();
+        const updatedVehicle = await prisma.vehicle.update({
+          where: { id: verifiedVehicleId },
+          data: {
+            latitude: Number(payload.latitude),
+            longitude: Number(payload.longitude),
+            lastSeenAt: now,
+          },
+          include: {
+            route: { select: { id: true, name: true, color: true } },
+          },
+        });
+
+        const broadcastPayload = {
+          vehicleId: updatedVehicle.id,
+          id: updatedVehicle.id,
+          name: updatedVehicle.name,
+          type: updatedVehicle.type,
+          routeId: updatedVehicle.routeId,
+          latitude: Number(updatedVehicle.latitude),
+          longitude: Number(updatedVehicle.longitude),
+          lastSeenAt: updatedVehicle.lastSeenAt,
+          speed: payload.speed || 0,
+          heading: payload.heading || 0,
+          tripId: payload.tripId || null,
+          route: updatedVehicle.route,
+        };
+
+        io.to("public").to("admin").emit("vehicle:location", broadcastPayload);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, vehicle: broadcastPayload }));
+      } catch (err) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "Invalid payload or server error" } }));
+      }
+    });
+    return;
   }
 
   res.writeHead(404);

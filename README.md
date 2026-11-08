@@ -78,7 +78,7 @@ npm run dev        # Terminal 2: เริ่ม Next.js Web App (Port 3000)
 | `npm run db:deploy` | อัปเดต Migration ฐานข้อมูลเข้าสู่ PostgreSQL |
 | `npm run db:seed` | นำเข้าข้อมูลจุดจอด 14 อาคารและสายรถตั้งต้น |
 | `npm run db:studio` | เปิด Prisma Studio ที่ [http://localhost:5555](http://localhost:5555) เพื่อดูข้อมูลในตาราง |
-| `npm run db:user` | สร้างหรือแก้ไขรหัสผ่านบัญชีผู้ใช้ เช่น `npm run db:user -- --username admin --password secret --role ADMIN` |
+| `npm run db:user` | สร้างหรือแก้ไขรหัสผ่านบัญชีผู้ใช้ เช่น `npm run db:user -- --username driver1 --password "password" --role DRIVER` |
 
 ---
 

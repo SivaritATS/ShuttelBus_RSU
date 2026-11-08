@@ -110,8 +110,24 @@ class LocationTrackingService : Service() {
         // เชื่อมต่อ Socket.IO
         val vehicleId = prefs.vehicleId
         val token = prefs.vehicleToken
-        if (vehicleId > 0 && token.isNotEmpty()) {
-            socketManager.connect(prefs.socketUrl, vehicleId, token)
+        if (vehicleId > 0) {
+            if (token.isNotEmpty()) {
+                socketManager.connect(prefs.socketUrl, vehicleId, token)
+            } else {
+                serviceScope.launch {
+                    try {
+                        val api = RetrofitClient.getService(prefs.baseUrl)
+                        val res = api.authenticateVehicle(null, com.rsu.shuttle.driver.data.model.VehicleAuthRequest(vehicleId = vehicleId))
+                        if (res.isSuccessful && res.body() != null) {
+                            val newToken = res.body()!!.token
+                            prefs.vehicleToken = newToken
+                            socketManager.connect(prefs.socketUrl, vehicleId, newToken)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to auto-fetch vehicle token: ${e.message}")
+                    }
+                }
+            }
         }
 
         // เริ่มดึงพิกัด GPS แบบความแม่นยำสูง
@@ -167,6 +183,20 @@ class LocationTrackingService : Service() {
             // 2. ถ้า Socket ไม่ติด ให้ส่งผ่าน HTTP REST Fallback
             if (!sentViaSocket) {
                 sendHttpFallback(vehicleId, token, lat, lng, speedKmh, heading)
+            }
+        } else if (vehicleId > 0 && token.isEmpty()) {
+            serviceScope.launch {
+                try {
+                    val api = RetrofitClient.getService(prefs.baseUrl)
+                    val res = api.authenticateVehicle(null, com.rsu.shuttle.driver.data.model.VehicleAuthRequest(vehicleId = vehicleId))
+                    if (res.isSuccessful && res.body() != null) {
+                        val newToken = res.body()!!.token
+                        prefs.vehicleToken = newToken
+                        socketManager.connect(prefs.socketUrl, vehicleId, newToken)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Auto-fetch token retry error: ${e.message}")
+                }
             }
         }
 

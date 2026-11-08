@@ -68,28 +68,43 @@ fun SettingsScreen(
             )
 
             // Preset Buttons
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
                     onClick = {
                         baseUrl = AppPreferences.DEFAULT_BASE_URL
                         socketUrl = AppPreferences.DEFAULT_SOCKET_URL
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Render Cloud", fontSize = 12.sp)
+                    Text("Render Cloud (Direct Neon)")
                 }
 
-                OutlinedButton(
-                    onClick = {
-                        baseUrl = "http://10.0.2.2:3001"
-                        socketUrl = "http://10.0.2.2:3001"
-                    },
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Emulator", fontSize = 12.sp)
+                    OutlinedButton(
+                        onClick = {
+                            baseUrl = "http://10.0.2.2:3000"
+                            socketUrl = "http://10.0.2.2:3001"
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Local Emulator", fontSize = 12.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            baseUrl = "http://192.168.1.236:3000"
+                            socketUrl = "http://192.168.1.236:3001"
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Wi-Fi วงเดียวกับ PC", fontSize = 12.sp)
+                    }
                 }
             }
 

@@ -1,6 +1,5 @@
 import { prisma } from "@backend/lib/prisma";
 import { withErrorHandling } from "@backend/lib/api";
-import { MOCK_VEHICLES } from "../../../../../mockup/mockData";
 
 const LIVE_GPS_TIMEOUT_MS = 15 * 1000; // 15 วินาที เพื่อให้ข้อมูลแม่นยำและเป็นเรียลไทม์ที่สุด
 

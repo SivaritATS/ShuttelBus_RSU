@@ -1,8 +1,7 @@
 import { prisma } from "@backend/lib/prisma";
 import { requireRole } from "@backend/lib/auth";
-import { jsonError, parseId, parseJson, withErrorHandling } from "@backend/lib/api";
+import { parseId, parseJson, withErrorHandling } from "@backend/lib/api";
 import { normalizeOptionalString, routeSchema, validate } from "@backend/lib/validation";
-import { MOCK_ROUTES } from "../../../../../mockup/mockData";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -13,24 +12,7 @@ export const GET = withErrorHandling(async (_request: Request, { params }: Conte
   });
   if (!route) return Response.json({ error: { message: "ไม่พบ Route", code: "NOT_FOUND" } }, { status: 404 });
 
-  // เฉพาะ Route ที่ชื่อและรายการจุดจอดตรงกับ Mock เดิมทุกประการ ถึงจะใช้ mock geometry
-  const matchingMock = MOCK_ROUTES.find(
-    (mr) => mr.name.trim().toLowerCase() === route.name.trim().toLowerCase()
-  );
-  const stopsMatch =
-    matchingMock &&
-    matchingMock.stopIds.length === route.routeStops.length &&
-    matchingMock.stopIds.every((id, idx) => route.routeStops[idx]?.stopId === id);
-
-  const geometry =
-  stopsMatch && matchingMock?.geometry && matchingMock.geometry.length > 0
-    ? matchingMock.geometry
-      : undefined;
-
-return Response.json({
-  ...route,
-  geometry,
-});
+  return Response.json(route);
 });
 
 export const PATCH = withErrorHandling(async (request: Request, { params }: Context) => {

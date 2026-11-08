@@ -17,6 +17,19 @@ import type { Route, RouteStop, Stop, Vehicle } from "@/types";
 const RSU_CAMPUS_CENTER: [number, number] = [13.9658, 100.5860];
 const DEFAULT_ZOOM = 16;
 
+// กรองจุดพิกัดในซอย/ทางเดินที่รถรางจริงไม่วิ่ง (2 เส้นตัดขวางที่ผู้ใช้ระบุ)
+function isProhibitedCampusSegment(lat: number, lng: number): boolean {
+  // เส้นบน: ซอยข้างตึก 10 และ 11 / ลานจอดรถ
+  if (lat >= 13.9663 && lat <= 13.9672 && lng >= 100.5858 && lng <= 100.5868) return true;
+  // เส้นล่าง: ทางเดินข้างสระน้ำ / หน้าตึก 1
+  if (lat >= 13.9650 && lat <= 13.9656 && lng >= 100.5861 && lng <= 100.5873) return true;
+  return false;
+}
+
+function sanitizeCoords(coords: [number, number][]): [number, number][] {
+  return coords.filter((pt) => !isProhibitedCampusSegment(pt[0], pt[1]));
+}
+
 function MapController({
   focusTarget,
   fitStops,
@@ -148,87 +161,55 @@ export default function CampusLiveMap({
   // สถานะเก็บพิกัดถนนที่คำนวณแบบ Dynamic ผ่าน OSRM ตามจุดจอดจริง
   const [dynamicRoadCoords, setDynamicRoadCoords] = useState<[number, number][] | null>(null);
 
-  // คำนวณเส้นทางตามถนนผ่าน OSRM อัตโนมัติเมื่อสายรถมีการกำหนดจุดจอด (ตั้งแต่ 2 จุดขึ้นไป)
+  // คำนวณเส้นทางตามแนวถนนจริงผ่าน OSRM อัตโนมัติเมื่อสายรถมีการกำหนดจุดจอด
   useEffect(() => {
-      if (!showRouteLine || routeStops.length < 2) {
-        setDynamicRoadCoords(null);
-        return;
-      }
+    if (!showRouteLine || routeStops.length < 2) {
+      setDynamicRoadCoords(null);
+      return;
+    }
 
-        // ตรวจสอบว่า geometry เดิมใน selectedRoute สอดคล้องกับจุดจอดจริงหรือไม่
-        if (selectedRoute?.geometry && selectedRoute.geometry.length > 1) {
-          const firstStop = routeStops[0]?.stop;
-          const lastStop = routeStops[routeStops.length - 1]?.stop;
-          const firstGeom = selectedRoute.geometry[0];
-          const lastGeom = selectedRoute.geometry[selectedRoute.geometry.length - 1];
-
-          const dist = (p1: [number, number], p2: [number, number]) =>
-            Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
-
-          // ตรวจสอบว่าพิกัดจุดแรกและจุดสุดท้ายตรงกับ Stop หรือไม่ (ในระยะ ~300 เมตร)
-          const firstOk = firstStop && dist([Number(firstStop.latitude), Number(firstStop.longitude)], firstGeom) < 0.003;
-          const lastOk = lastStop && dist([Number(lastStop.latitude), Number(lastStop.longitude)], lastGeom) < 0.003;
-
-          if (firstOk && lastOk) {
-            setDynamicRoadCoords(null);
-            return;
-          }
+    let isCancelled = false;
+    const fetchOSRMRoute = async () => {
+      try {
+        const coordsStr = routeStops
+          .map((rs) => `${Number(rs.stop.longitude)},${Number(rs.stop.latitude)}`)
+          .join(";");
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&continue_straight=false`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!isCancelled && data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
+          const latLngs = data.routes[0].geometry.coordinates.map(
+            (c: [number, number]) => [c[1], c[0]] as [number, number]
+          );
+          // กรองจุดพิกัดในซอย/ทางเดินที่รถรางจริงไม่วิ่ง (2 เส้นตัดขวางที่ผู้ใช้ระบุ)
+          const cleanCoords = sanitizeCoords(latLngs);
+          setDynamicRoadCoords(cleanCoords);
         }
+      } catch (err) {
+        console.warn("[CampusLiveMap] Could not fetch OSRM road geometry, falling back to direct line:", err);
+      }
+    };
 
-        let isCancelled = false;
-        const fetchOSRMRoute = async () => {
-          try {
-            const coordsStr = routeStops
-              .map((rs) => `${Number(rs.stop.longitude)},${Number(rs.stop.latitude)}`)
-              .join(";");
-            const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&continue_straight=false`;
-            const res = await fetch(url);
-            const data = await res.json();
-            if (!isCancelled && data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
-              const latLngs = data.routes[0].geometry.coordinates.map(
-                (c: [number, number]) => [c[1], c[0]] as [number, number]
-              );
-              setDynamicRoadCoords(latLngs);
-            }
-          } catch (err) {
-            console.warn("[CampusLiveMap] Could not fetch OSRM road geometry, falling back to direct line:", err);
-          }
-        };
+    fetchOSRMRoute();
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedRoute?.id, routeStops, showRouteLine]);
 
-        fetchOSRMRoute();
-        return () => {
-          isCancelled = true;
-        };
-      }, [selectedRoute, routeStops, showRouteLine]);
-
-  // พิกัดสำหรับเส้นทาง Polyline (ลำดับ: 1. dynamicRoadCoords OSRM -> 2. geometry ที่ตรงกับจุดจอด -> 3. เส้นตรงระหว่างจุดจอดจริง)
+  // พิกัดสำหรับเส้นทาง Polyline (ลำดับ: 1. dynamicRoadCoords OSRM -> 2. geometry ที่ผ่านการกรอง -> 3. เส้นตรงระหว่างจุดจอดจริง)
   const polylineCoords = useMemo(() => {
     if (!showRouteLine) return [];
 
-    // 1. ถ้าคำนวณแนวถนนจริงจาก OSRM ผ่านจุดจอดล่าสุดสำเร็จ
+    // 1. เส้นทางตามแนวถนนจริงที่คำนวณจากจุดจอดล่าสุด (กรอง 2 เส้นตัดขวางออกเด็ดขาด)
     if (dynamicRoadCoords && dynamicRoadCoords.length > 1) {
-      return dynamicRoadCoords;
+      return sanitizeCoords(dynamicRoadCoords);
     }
 
-    // 2. ถ้ามี geometry ที่ระบุใน Route และจุดแรก/สุดท้ายสอดคล้องกับจุดจอดจริง
+    // 2. ถ้ามี geometry ส่งมาจาก Route (กรอง 2 เส้นตัดขวางออกเด็ดขาด)
     if (selectedRoute?.geometry && selectedRoute.geometry.length > 1) {
-      if (routeStops.length >= 2) {
-        const firstStop = routeStops[0]?.stop;
-        const lastStop = routeStops[routeStops.length - 1]?.stop;
-        const firstGeom = selectedRoute.geometry[0];
-        const lastGeom = selectedRoute.geometry[selectedRoute.geometry.length - 1];
-
-        const dist = (p1: [number, number], p2: [number, number]) =>
-          Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
-
-        const firstOk = firstStop && dist([Number(firstStop.latitude), Number(firstStop.longitude)], firstGeom) < 0.003;
-        const lastOk = lastStop && dist([Number(lastStop.latitude), Number(lastStop.longitude)], lastGeom) < 0.003;
-
-        if (firstOk && lastOk) {
-          return selectedRoute.geometry;
-        }
-      } else {
-        return selectedRoute.geometry;
+      const sanitized = sanitizeCoords(selectedRoute.geometry);
+      if (sanitized.length > 1) {
+        return sanitized;
       }
     }
 

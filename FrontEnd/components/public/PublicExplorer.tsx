@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Route, RouteStop, Stop, Vehicle } from "@/types";
 import { useRealtimeSocket } from "@/lib/useSocket";
-import { MOCK_STOPS, MOCK_ROUTES, MOCK_VEHICLES, getRoutesWithGeometry } from "@mockup/mockData";
 
 // โหลด CampusLiveMap แบบ dynamic เพื่อหลีกเลี่ยง Leaflet window error ใน SSR
 const CampusLiveMap = dynamic(
@@ -159,7 +158,7 @@ export default function PublicExplorer() {
     }
   }, []);
 
-  // โหลด Routes และ Stops เริ่มต้น
+  // โหลด Routes และ Stops เริ่มต้นจากระบบ Database
   useEffect(() => {
     Promise.all([
       getJson<Route[]>("/api/routes?active=true"),
@@ -167,8 +166,8 @@ export default function PublicExplorer() {
       getJson<Vehicle[]>("/api/vehicles/locations"),
     ])
       .then(([routesData, stopsData, vehiclesData]) => {
-        const finalRoutes = routesData && routesData.length > 0 ? routesData : (getRoutesWithGeometry() as unknown as Route[]);
-        const finalStops = stopsData && stopsData.length > 0 ? stopsData : (MOCK_STOPS as unknown as Stop[]);
+        const finalRoutes = routesData || [];
+        const finalStops = stopsData || [];
         const finalVehicles = vehiclesData && vehiclesData.length > 0 ? vehiclesData : DEFAULT_RSU_VEHICLES;
 
         setRoutes(finalRoutes);
@@ -180,15 +179,7 @@ export default function PublicExplorer() {
         setLastUpdated(new Date());
       })
       .catch((err) => {
-        console.warn("[PublicExplorer] Database API unreachable, loading offline dataset:", err);
-        const fallbackRoutes = getRoutesWithGeometry() as unknown as Route[];
-        setRoutes(fallbackRoutes);
-        setAllStops(MOCK_STOPS as unknown as Stop[]);
-        setVehicles(DEFAULT_RSU_VEHICLES);
-        if (fallbackRoutes.length > 0) {
-          setSelectedRoute(fallbackRoutes[0]);
-        }
-        setLastUpdated(new Date());
+        console.error("[PublicExplorer] Database API error:", err);
       })
       .finally(() => {
         setLoading(false);

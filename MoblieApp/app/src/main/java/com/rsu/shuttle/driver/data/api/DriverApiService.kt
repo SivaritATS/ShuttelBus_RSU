@@ -26,6 +26,15 @@ interface DriverApiService {
         @Body body: LocationUpdatePayload
     ): Response<Map<String, Any>>
 
+    @POST("/api/vehicles/location/stop")
+    suspend fun stopTrackingHttp(
+        @Header("x-vehicle-token") vehicleToken: String?,
+        @Body body: Map<String, Any>
+    ): Response<Map<String, Any>>
+
+    @GET("/api/vehicles/locations")
+    suspend fun getVehicles(): Response<List<VehicleDto>>
+
     @GET("/health")
     suspend fun checkHealth(): Response<HealthResponse>
 }

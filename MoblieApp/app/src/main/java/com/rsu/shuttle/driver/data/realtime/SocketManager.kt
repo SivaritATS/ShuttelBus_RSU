@@ -138,6 +138,18 @@ class SocketManager {
         return true
     }
 
+    fun emitStopTracking(vehicleId: Int, token: String = "") {
+        val s = socket
+        if (s != null && s.connected()) {
+            val json = JSONObject().apply {
+                put("vehicleId", vehicleId)
+                if (token.isNotEmpty()) put("token", token)
+            }
+            s.emit("vehicle:tracking:stop", json)
+            Log.i(TAG, "Emitted vehicle:tracking:stop for vehicleId: $vehicleId")
+        }
+    }
+
     fun disconnect() {
         try {
             socket?.off()

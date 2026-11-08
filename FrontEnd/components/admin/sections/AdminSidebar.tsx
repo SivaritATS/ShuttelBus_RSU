@@ -1,40 +1,75 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { AdminTab } from "../admin-types";
 
-const tabLabel: Record<AdminTab, string> = {
-  overview: "Overview",
-  "live-map": "Live Map & Trips",
-  vehicles: "Vehicles",
-  routes: "Routes",
-  stops: "Stops",
-};
+interface NavEntry {
+  key: AdminTab;
+  label: string;
+  href: string;
+}
 
-export function AdminSidebar({ tab, onTabChange, onReset }: { tab: AdminTab; onTabChange: (tab: AdminTab) => void; onReset: () => void }) {
+const navEntries: NavEntry[] = [
+  { key: "overview", label: "Overview", href: "/admin" },
+  { key: "live-map", label: "Live Map and Trip", href: "/admin/live-map" },
+  { key: "vehicles", label: "Vehicle", href: "/admin/vehicles" },
+  { key: "routes", label: "Route", href: "/admin/routes" },
+  { key: "stops", label: "Stop", href: "/admin/stops" },
+];
+
+export function AdminSidebar({
+  tab,
+  onTabChange,
+  onReset,
+}: {
+  tab: AdminTab;
+  onTabChange: (tab: AdminTab) => void;
+  onReset: () => void;
+}) {
+  const pathname = usePathname();
+
+  const isItemActive = (entry: NavEntry) => {
+    if (pathname === entry.href) return true;
+    if (entry.key === "overview" && (pathname === "/admin" || pathname === "/admin/overview")) return true;
+    if (entry.key === "vehicles" && (pathname === "/admin/vehicles" || pathname === "/admin/vehicle")) return true;
+    if (entry.key === "routes" && (pathname === "/admin/routes" || pathname === "/admin/route")) return true;
+    if (entry.key === "stops" && (pathname === "/admin/stops" || pathname === "/admin/stop")) return true;
+    return tab === entry.key;
+  };
+
   return (
     <aside className="admin-sidebar">
       <h1>Operations</h1>
       <p>Campus transport control room</p>
       <nav className="side-nav">
-        {(Object.keys(tabLabel) as AdminTab[]).map((item) => (
-          <button
-            type="button"
-            key={item}
-            className={tab === item ? "active" : ""}
-            aria-current={tab === item ? "page" : undefined}
-            onClick={() => { onTabChange(item); onReset(); }}
-          >
-            <NavIcon name={item} />
-            {tabLabel[item]}
-          </button>
-        ))}
+        {navEntries.map((entry) => {
+          const active = isItemActive(entry);
+          return (
+            <Link
+              key={entry.key}
+              href={entry.href}
+              className={`side-nav-link ${active ? "active" : ""}`}
+              style={{ textDecoration: "none" }}
+              aria-current={active ? "page" : undefined}
+              onClick={() => {
+                onTabChange(entry.key);
+                onReset();
+              }}
+            >
+              <NavIcon name={entry.key} />
+              {entry.label}
+            </Link>
+          );
+        })}
       </nav>
     </aside>
   );
 }
 
 export function getAdminTabLabel(tab: AdminTab) {
-  return tabLabel[tab];
+  const match = navEntries.find((e) => e.key === tab);
+  return match?.label || tab;
 }
 
 function NavIcon({ name }: { name: AdminTab }) {

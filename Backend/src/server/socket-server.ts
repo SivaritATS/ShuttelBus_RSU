@@ -151,13 +151,13 @@ const server = http.createServer(async (req, res) => {
       });
 
       const now = Date.now();
-      const LIVE_GPS_TIMEOUT_MS = 3 * 60 * 1000;
+      const LIVE_GPS_TIMEOUT_MS = 15 * 1000; // 15 วินาที เพื่อความเป็น Realtime สูงสุด
       const enriched = vehicles.map((v) => {
         const lastSeenTime = v.lastSeenAt ? new Date(v.lastSeenAt).getTime() : 0;
         const isLive = Boolean(lastSeenTime && (now - lastSeenTime) < LIVE_GPS_TIMEOUT_MS);
         return {
           ...v,
-          // แสดงพิกัดเฉพาะรถที่กำลังแชร์สดจากมือถือคนขับ ไม่ระบุพิกัดเจาะจงให้อยู่นิ่ง
+          // แสดงพิกัดเฉพาะรถที่กำลังแชร์สดจากมือถือคนขับ
           latitude: isLive ? v.latitude : null,
           longitude: isLive ? v.longitude : null,
           isLive,
@@ -275,6 +275,46 @@ const server = http.createServer(async (req, res) => {
       } catch (err) {
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: { message: "Invalid payload or server error" } }));
+      }
+    });
+    return;
+  }
+
+  // HTTP REST: คนขับหยุดแชร์ตำแหน่ง (Stop Tracking)
+  if ((req.url === "/api/vehicles/location/stop" || req.url === "/api/vehicles/stop") && req.method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      try {
+        const payload = JSON.parse(body || "{}");
+        const vehicleId = Number(payload.vehicleId);
+        if (vehicleId) {
+          await prisma.vehicle.update({
+            where: { id: vehicleId },
+            data: { lastSeenAt: null },
+          }).catch(() => null);
+
+          const stopPayload = {
+            id: vehicleId,
+            vehicleId,
+            isLive: false,
+            latitude: null,
+            longitude: null,
+            speed: 0,
+            heading: 0,
+            lastSeenAt: null,
+          };
+
+          io.to("public").to("admin").emit("vehicle:location", stopPayload);
+          io.to("public").to("admin").emit("vehicle:stop", stopPayload);
+          console.log(`[Socket-Server] Vehicle ${vehicleId} stopped tracking via HTTP`);
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, message: "Tracking stopped" }));
+      } catch (err) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "Failed to stop tracking" } }));
       }
     });
     return;
@@ -486,8 +526,67 @@ io.on("connection", (socket: Socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
+  // คนขับหยุดแชร์ตำแหน่ง (Stop Tracking) ผ่าน Socket
+  socket.on("vehicle:tracking:stop", async (data: { vehicleId?: number; token?: string }) => {
+    try {
+      const authedVehicleId = socket.data.vehicleId || (data?.token ? verifyVehicleToken(data.token) : null);
+      const targetVehicleId = Number(data?.vehicleId || authedVehicleId);
+
+      if (targetVehicleId) {
+        console.log(`[Socket.io] Vehicle ${targetVehicleId} stopped tracking via Socket`);
+        await prisma.vehicle.update({
+          where: { id: targetVehicleId },
+          data: { lastSeenAt: null },
+        }).catch(() => null);
+
+        const stopPayload = {
+          id: targetVehicleId,
+          vehicleId: targetVehicleId,
+          isLive: false,
+          latitude: null,
+          longitude: null,
+          speed: 0,
+          heading: 0,
+          lastSeenAt: null,
+        };
+
+        io.to("public").to("admin").emit("vehicle:location", stopPayload);
+        io.to("public").to("admin").emit("vehicle:stop", stopPayload);
+        socket.emit("vehicle:tracking:stop:ack", { success: true });
+      }
+    } catch (err) {
+      console.error("[Socket.io] Error handling vehicle:tracking:stop:", err);
+    }
+  });
+
+  socket.on("disconnect", async () => {
     console.log(`[Socket.io] Client disconnected: ${socket.id}`);
+    const targetVehicleId = socket.data.vehicleId;
+    if (targetVehicleId) {
+      console.log(`[Socket.io] Vehicle ${targetVehicleId} disconnected, updating to standby`);
+      try {
+        await prisma.vehicle.update({
+          where: { id: targetVehicleId },
+          data: { lastSeenAt: null },
+        }).catch(() => null);
+
+        const stopPayload = {
+          id: targetVehicleId,
+          vehicleId: targetVehicleId,
+          isLive: false,
+          latitude: null,
+          longitude: null,
+          speed: 0,
+          heading: 0,
+          lastSeenAt: null,
+        };
+
+        io.to("public").to("admin").emit("vehicle:location", stopPayload);
+        io.to("public").to("admin").emit("vehicle:stop", stopPayload);
+      } catch (err) {
+        console.error("[Socket.io] Error on disconnect broadcast:", err);
+      }
+    }
   });
 });
 

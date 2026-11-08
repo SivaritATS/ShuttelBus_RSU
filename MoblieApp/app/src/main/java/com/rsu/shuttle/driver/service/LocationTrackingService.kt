@@ -244,6 +244,24 @@ class LocationTrackingService : Service() {
             Log.e(TAG, "Error removing location updates: ${e.message}")
         }
 
+        val vehicleId = prefs.vehicleId
+        val token = prefs.vehicleToken
+
+        if (vehicleId > 0) {
+            // ส่งสัญญาณหยุดแชร์ตำแหน่งแบบ Realtime ผ่าน Socket ทันที
+            socketManager.emitStopTracking(vehicleId, token)
+
+            // ส่ง HTTP Fallback แจ้งเซิร์ฟเวอร์
+            serviceScope.launch {
+                try {
+                    val api = RetrofitClient.getService(prefs.baseUrl)
+                    api.stopTrackingHttp(token, mapOf("vehicleId" to vehicleId))
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to call HTTP stopTracking: ${e.message}")
+                }
+            }
+        }
+
         socketManager.disconnect()
         releaseWakeLock()
 

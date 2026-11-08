@@ -1,23 +1,33 @@
 package com.rsu.shuttle.driver.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rsu.shuttle.driver.data.api.RetrofitClient
@@ -26,6 +36,19 @@ import com.rsu.shuttle.driver.data.model.VehicleAuthRequest
 import com.rsu.shuttle.driver.data.preferences.AppPreferences
 import com.rsu.shuttle.driver.ui.theme.*
 import kotlinx.coroutines.launch
+
+data class VehicleOption(
+    val id: Int,
+    val name: String,
+    val type: String = "",
+    val routeName: String = ""
+)
+
+private val DEFAULT_VEHICLES = listOf(
+    VehicleOption(1, "RSU Shuttle 01 (รถรางไฟฟ้า 1)", "Electric Tram", "สาย Main Campus Loop"),
+    VehicleOption(2, "RSU Shuttle 02 (รถรางไฟฟ้า 2)", "Electric Tram", "สาย North-South Line"),
+    VehicleOption(3, "RSU Shuttle 03 (รถมินิบัสรับส่ง)", "Mini Bus", "สาย Special Express")
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,23 +59,120 @@ fun LoginScreen(
     val context = LocalContext.current
     val prefs = remember { AppPreferences.getInstance(context) }
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
-    var username by remember { mutableStateOf(prefs.driverName.ifEmpty { "driver1" }) }
+    // ฟิลด์ผู้ใช้งานและรหัสผ่านเริ่มต้นเป็นค่าว่าง
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var vehicleIdInput by remember { mutableStateOf(if (prefs.vehicleId > 0) prefs.vehicleId.toString() else "1") }
-    var vehicleTokenInput by remember { mutableStateOf(prefs.vehicleToken) }
+    var isPasswordVisible by remember { mutableStateOf(false) }
+
+    // รายการรถดึงจากดาต้าเบส
+    var vehicleList by remember { mutableStateOf(DEFAULT_VEHICLES) }
+    var selectedVehicle by remember {
+        mutableStateOf(
+            DEFAULT_VEHICLES.find { it.id == prefs.vehicleId } ?: DEFAULT_VEHICLES.first()
+        )
+    }
+    var isDropdownExpanded by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isQuickMode by remember { mutableStateOf(false) }
+
+    // ดึงรายชื่อรถจากฐานข้อมูลเซิร์ฟเวอร์แบบอัตโนมัติ
+    LaunchedEffect(Unit) {
+        try {
+            val api = RetrofitClient.getService(prefs.baseUrl)
+            val res = api.getVehicles()
+            if (res.isSuccessful && !res.body().isNullOrEmpty()) {
+                val fetched = res.body()!!.map { v ->
+                    VehicleOption(
+                        id = v.id,
+                        name = v.name,
+                        type = v.type ?: "",
+                        routeName = v.route?.name ?: ""
+                    )
+                }
+                vehicleList = fetched
+                selectedVehicle = fetched.find { it.id == prefs.vehicleId } ?: fetched.first()
+            }
+        } catch (_: Exception) {
+            // ใช้ fallback เริ่มต้นถ้าติดต่อเซิร์ฟเวอร์ยังไม่ได้
+        }
+    }
+
+    val handleLogin: () -> Unit = {
+        if (username.isBlank() || password.isBlank()) {
+            errorMessage = "กรุณากรอก username และ password ให้ครบถ้วน"
+        } else {
+            scope.launch {
+                isLoading = true
+                errorMessage = null
+                try {
+                    val api = RetrofitClient.getService(prefs.baseUrl)
+                    val loginRes = api.login(LoginRequest(username.trim(), password.trim()))
+
+                    if (loginRes.isSuccessful && loginRes.body() != null) {
+                        val user = loginRes.body()!!.user
+                        prefs.driverName = user.username
+
+                        // เชื่อมโยงรถที่คนขับเลือกจากดรอปดาวน์
+                        val targetVehicleId = selectedVehicle.id
+                        val tokenRes = api.authenticateVehicle(
+                            authHeader = null,
+                            body = VehicleAuthRequest(vehicleId = targetVehicleId)
+                        )
+
+                        if (tokenRes.isSuccessful && tokenRes.body() != null) {
+                            val vData = tokenRes.body()!!
+                            prefs.vehicleId = vData.vehicle.id
+                            prefs.vehicleToken = vData.token
+                            prefs.vehicleName = vData.vehicle.name
+                        } else {
+                            // บันทึก ID รถและชื่อรถที่เลือกไว้
+                            prefs.vehicleId = targetVehicleId
+                            prefs.vehicleName = selectedVehicle.name
+                        }
+
+                        onLoginSuccess()
+                    } else {
+                        errorMessage = "username หรือ password ไม่ถูกต้อง"
+                    }
+                } catch (e: Exception) {
+                    errorMessage = "ไม่สามารถเชื่อมต่อระบบได้: ${e.localizedMessage ?: "เครือข่ายขัดข้อง"}"
+                } finally {
+                    isLoading = false
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("RSU Shuttle Driver", fontWeight = FontWeight.Bold) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(ShuttleGreen)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "RSU Shuttle Driver",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = TextPrimary
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary)
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = TextSecondary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -63,274 +183,343 @@ fun LoginScreen(
         },
         containerColor = BackgroundDark
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.DirectionsBus,
-                contentDescription = "Bus",
-                tint = ShuttleLightBlue,
-                modifier = Modifier.size(72.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "เข้าสู่ระบบคนขับรถ",
-                style = MaterialTheme.typography.headlineMedium,
-                color = TextPrimary
-            )
-
-            Text(
-                text = "แชร์ตำแหน่งรถบัส ม.รังสิต แบบ Realtime",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // โหมดสลับระหว่าง ล็อกอินปกติ กับ ใส่ Vehicle Token ตรงๆ
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SurfaceDark, RoundedCornerShape(12.dp))
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                FilterChip(
-                    selected = !isQuickMode,
-                    onClick = { isQuickMode = false },
-                    label = { Text("ล็อกอินคนขับ") }
-                )
-                FilterChip(
-                    selected = isQuickMode,
-                    onClick = { isQuickMode = true },
-                    label = { Text("ระบุ Token รถโดยตรง") }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (!isQuickMode) {
-                // Username
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("ชื่อผู้ใช้งาน (Username)") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ShuttleBlue,
-                        unfocusedBorderColor = CardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                // Header Badge & App Title
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(ShuttleBlue, ShuttleLightBlue)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DirectionsBus,
+                        contentDescription = "RSU Shuttle",
+                        tint = Color.White,
+                        modifier = Modifier.size(44.dp)
                     )
-                )
+                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                // Password
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("รหัสผ่าน (Password)") },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ShuttleBlue,
-                        unfocusedBorderColor = CardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // เลือกรถด่วน
                 Text(
-                    text = "เลือกรถประจำคันที่จะขับ:",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "เข้าสู่ระบบคนขับรถ",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+
+                Text(
+                    text = "ระบบติดตามรถราง มหาวิทยาลัยรังสิต",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = vehicleIdInput == "1",
-                        onClick = { vehicleIdInput = "1" },
-                        label = { Text("#1 รถราง 1", fontSize = 12.sp) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = vehicleIdInput == "2",
-                        onClick = { vehicleIdInput = "2" },
-                        label = { Text("#2 รถราง 2", fontSize = 12.sp) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = vehicleIdInput == "3",
-                        onClick = { vehicleIdInput = "3" },
-                        label = { Text("#3 มินิบัส 3", fontSize = 12.sp) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Vehicle ID
-                OutlinedTextField(
-                    value = vehicleIdInput,
-                    onValueChange = { vehicleIdInput = it },
-                    label = { Text("หมายเลขรถประจำคัน (Vehicle ID)") },
-                    leadingIcon = { Icon(Icons.Default.DirectionsBus, contentDescription = null) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ShuttleBlue,
-                        unfocusedBorderColor = CardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
-                )
-            } else {
-                // Quick Mode: Vehicle ID + Token
-                OutlinedTextField(
-                    value = vehicleIdInput,
-                    onValueChange = { vehicleIdInput = it },
-                    label = { Text("Vehicle ID (เช่น 1)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ShuttleBlue,
-                        unfocusedBorderColor = CardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
+                    modifier = Modifier.padding(top = 4.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
-                OutlinedTextField(
-                    value = vehicleTokenInput,
-                    onValueChange = { vehicleTokenInput = it },
-                    label = { Text("Vehicle Signed Token") },
-                    singleLine = false,
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ShuttleBlue,
-                        unfocusedBorderColor = CardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
-                )
-            }
-
-            if (errorMessage != null) {
-                Spacer(modifier = Modifier.height(12.dp))
+                // Card Container สำหรับฟอร์มล็อกอิน
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = ShuttleRed.copy(alpha = 0.15f)),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = errorMessage ?: "",
-                        color = ShuttleRed,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = Brush.verticalGradient(
+                            listOf(CardBorder, CardBorder.copy(alpha = 0.3f))
+                        )
                     )
-                }
-            }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        // 1. ดรอปดาวน์เลือกรถประจำคันที่จะขับ
+                        Text(
+                            text = "เลือกรถประจำคันที่จะขับ",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
 
-            Spacer(modifier = Modifier.height(28.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
-                onClick = {
-                    val vid = vehicleIdInput.toIntOrNull() ?: 1
-                    if (isQuickMode) {
-                        if (vehicleTokenInput.isBlank()) {
-                            errorMessage = "กรุณากรอก Vehicle Token"
-                            return@Button
-                        }
-                        prefs.vehicleId = vid
-                        prefs.vehicleToken = vehicleTokenInput.trim()
-                        prefs.vehicleName = "RSU Shuttle #$vid"
-                        onLoginSuccess()
-                    } else {
-                        // ดำเนินการล็อกอินผ่าน API
-                        scope.launch {
-                            isLoading = true
-                            errorMessage = null
-                            try {
-                                val api = RetrofitClient.getService(prefs.baseUrl)
-                                val loginRes = api.login(LoginRequest(username.trim(), password.trim()))
-
-                                if (loginRes.isSuccessful && loginRes.body() != null) {
-                                    val user = loginRes.body()!!.user
-                                    prefs.driverName = user.username
-
-                                    // เรียกขอ Vehicle Token
-                                    val tokenRes = api.authenticateVehicle(
-                                        authHeader = null,
-                                        body = VehicleAuthRequest(vehicleId = vid)
+                        ExposedDropdownMenuBox(
+                            expanded = isDropdownExpanded,
+                            onExpandedChange = { isDropdownExpanded = !isDropdownExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedVehicle.name,
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDropdownExpanded)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.DirectionsBus,
+                                        contentDescription = null,
+                                        tint = ShuttleLightBlue
                                     )
+                                },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = ShuttleBlue,
+                                    unfocusedBorderColor = CardBorder,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    focusedContainerColor = BackgroundDark.copy(alpha = 0.5f),
+                                    unfocusedContainerColor = BackgroundDark.copy(alpha = 0.5f)
+                                )
+                            )
 
-                                    if (tokenRes.isSuccessful && tokenRes.body() != null) {
-                                        val vData = tokenRes.body()!!
-                                        prefs.vehicleId = vData.vehicle.id
-                                        prefs.vehicleToken = vData.token
-                                        prefs.vehicleName = vData.vehicle.name
-                                        onLoginSuccess()
-                                    } else {
-                                        // ถ้าขอ vehicle token ไม่ผ่าน อาจใช้ ID แล้วข้ามไปหน้า Tracking ได้เลย (fallback)
-                                        prefs.vehicleId = vid
-                                        prefs.vehicleName = "RSU Shuttle #$vid"
-                                        onLoginSuccess()
-                                    }
-                                } else {
-                                    val err = loginRes.errorBody()?.string() ?: "เข้าสู่ระบบไม่สำเร็จ"
-                                    errorMessage = err
+                            ExposedDropdownMenu(
+                                expanded = isDropdownExpanded,
+                                onDismissRequest = { isDropdownExpanded = false },
+                                modifier = Modifier
+                                    .background(SurfaceDark)
+                                    .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                            ) {
+                                vehicleList.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(
+                                                    text = option.name,
+                                                    fontWeight = if (option.id == selectedVehicle.id) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (option.id == selectedVehicle.id) ShuttleLightBlue else TextPrimary,
+                                                    fontSize = 14.sp
+                                                )
+                                                if (option.routeName.isNotEmpty() || option.type.isNotEmpty()) {
+                                                    Text(
+                                                        text = "${option.type.ifEmpty { "รถรับส่ง" }} · ${option.routeName.ifEmpty { "ทั่วไป" }}",
+                                                        fontSize = 12.sp,
+                                                        color = TextSecondary
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.DirectionsTransit,
+                                                contentDescription = null,
+                                                tint = if (option.id == selectedVehicle.id) ShuttleLightBlue else TextSecondary
+                                            )
+                                        },
+                                        onClick = {
+                                            selectedVehicle = option
+                                            isDropdownExpanded = false
+                                        },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                    )
                                 }
-                            } catch (e: Exception) {
-                                errorMessage = "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: ${e.localizedMessage}"
-                            } finally {
-                                isLoading = false
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // 2. ฟิลด์ Username
+                        Text(
+                            text = "ผู้ใช้งาน",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = username,
+                            onValueChange = {
+                                username = it
+                                errorMessage = null
+                            },
+                            placeholder = {
+                                Text("username", color = TextSecondary.copy(alpha = 0.6f))
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = ShuttleLightBlue)
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ShuttleBlue,
+                                unfocusedBorderColor = CardBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedContainerColor = BackgroundDark.copy(alpha = 0.5f),
+                                unfocusedContainerColor = BackgroundDark.copy(alpha = 0.5f)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // 3. ฟิลด์ Password
+                        Text(
+                            text = "พาสเวิร์ด",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = {
+                                password = it
+                                errorMessage = null
+                            },
+                            placeholder = {
+                                Text("password", color = TextSecondary.copy(alpha = 0.6f))
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = ShuttleLightBlue)
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle password visibility",
+                                        tint = TextSecondary
+                                    )
+                                }
+                            },
+                            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                    handleLogin()
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ShuttleBlue,
+                                unfocusedBorderColor = CardBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedContainerColor = BackgroundDark.copy(alpha = 0.5f),
+                                unfocusedContainerColor = BackgroundDark.copy(alpha = 0.5f)
+                            )
+                        )
+
+                        // แสดงข้อความข้อผิดพลาดถ้ามี
+                        AnimatedVisibility(visible = errorMessage != null) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = ShuttleRed.copy(alpha = 0.15f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.ErrorOutline,
+                                        contentDescription = null,
+                                        tint = ShuttleRed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = errorMessage ?: "",
+                                        color = ShuttleRed,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // ปุ่มเข้าสู่ระบบ
+                        Button(
+                            onClick = handleLogin,
+                            enabled = !isLoading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ShuttleBlue
+                            )
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.5.dp
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "กำลังตรวจสอบสิทธิ์…",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Login,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "เข้าสู่ระบบ",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
-                },
-                enabled = !isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ShuttleBlue)
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                } else {
-                    Text(
-                        text = if (isQuickMode) "บันทึกและเข้าสู่หน้าแชร์พิกัด" else "เข้าสู่ระบบ",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ท้ายหน้าจอ
+                Text(
+                    text = "มหาวิทยาลัยรังสิต · Rangsit University",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary.copy(alpha = 0.7f)
+                )
             }
         }
     }
 }
-

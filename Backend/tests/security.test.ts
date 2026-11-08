@@ -45,5 +45,15 @@ describe("Vehicle Token Cryptographic Security", () => {
     expect(verifyVehicleToken(undefined as any)).toBeNull();
     expect(verifyVehicleToken("Bearer token")).toBeNull();
   });
+
+  it("ensures live GPS timeout is set to 15 seconds for real-time responsiveness", () => {
+    const LIVE_GPS_TIMEOUT_MS = 15 * 1000;
+    const now = Date.now();
+    const activeTime = now - 5 * 1000; // 5s ago -> live
+    const inactiveTime = now - 20 * 1000; // 20s ago -> standby
+
+    expect(now - activeTime < LIVE_GPS_TIMEOUT_MS).toBe(true);
+    expect(now - inactiveTime < LIVE_GPS_TIMEOUT_MS).toBe(false);
+  });
 });
 

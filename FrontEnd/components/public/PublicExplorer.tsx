@@ -51,10 +51,10 @@ export default function PublicExplorer() {
   const [activeItemName, setActiveItemName] = useState<string>("");
   const [followedVehicleId, setFollowedVehicleId] = useState<number | null>(null);
 
-  // คำนวณสถานะว่ารถคันไหนกำลังแชร์ GPS สดจากมือถือคนขับ (ภายใน 3 นาที)
-  const LIVE_GPS_TIMEOUT_MS = 3 * 60 * 1000;
+  // คำนวณสถานะว่ารถคันไหนกำลังแชร์ GPS สดจากมือถือคนขับ (ภายใน 15 วินาที)
+  const LIVE_GPS_TIMEOUT_MS = 15 * 1000;
   const isLiveVehicle = useCallback((v: Vehicle) => {
-    if (v.isLive) return true;
+    if (v.isLive === false || v.latitude == null || v.longitude == null) return false;
     if (!v.lastSeenAt) return false;
     return (Date.now() - new Date(v.lastSeenAt).getTime()) < LIVE_GPS_TIMEOUT_MS;
   }, [LIVE_GPS_TIMEOUT_MS]);
@@ -62,18 +62,37 @@ export default function PublicExplorer() {
   const liveVehiclesCount = useMemo(() => vehicles.filter(isLiveVehicle).length, [vehicles, isLiveVehicle]);
   const standbyVehiclesCount = useMemo(() => vehicles.length - liveVehiclesCount, [vehicles, liveVehiclesCount]);
 
-  // Realtime Socket Callback เมื่อคนขับส่งพิกัด GPS สดจากมือถือ
+  // Realtime Socket Callback เมื่อคนขับส่งพิกัด GPS สดจากมือถือ หรือหยุดแชร์ตำแหน่ง
   const handleRealtimeLocation = useCallback((incomingVehicle: Vehicle) => {
     setVehicles((prev) => {
       const idx = prev.findIndex((v) => v.id === incomingVehicle.id);
+      const isLive = incomingVehicle.isLive !== false && incomingVehicle.latitude != null;
+      const updatedVehicle = {
+        ...incomingVehicle,
+        isLive,
+        latitude: isLive ? incomingVehicle.latitude : (null as any),
+        longitude: isLive ? incomingVehicle.longitude : (null as any),
+      };
+
       if (idx !== -1) {
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], ...incomingVehicle, isLive: true };
+        copy[idx] = { ...copy[idx], ...updatedVehicle };
         return copy;
       }
-      return [...prev, { ...incomingVehicle, isLive: true }];
+      return [...prev, updatedVehicle];
     });
     setLastUpdated(new Date());
+
+    if (!incomingVehicle.isLive || incomingVehicle.latitude == null) {
+      setFollowedVehicleId((curr) => {
+        if (curr === incomingVehicle.id) {
+          setActiveItemName(`${incomingVehicle.name || "รถราง"} · หยุดแชร์ตำแหน่ง (สแตนด์บาย)`);
+          return null;
+        }
+        return curr;
+      });
+      return;
+    }
 
     // เลื่อนพิกัดกล้องตามตำแหน่ง GPS จากมือถือคนขับทันที
     const lat = Number(incomingVehicle.latitude);
@@ -108,7 +127,7 @@ export default function PublicExplorer() {
   const [showVehicles, setShowVehicles] = useState(true);
   const [showRouteLine, setShowRouteLine] = useState(true);
 
-  // โหลดตำแหน่งรถราง (Live Vehicles) ผ่าน REST API เป็น Fallback
+  // โหลดตำแหน่งรถราง (Live Vehicles) ผ่าน REST API เป็น Fallback ทุก 5 วินาที
   const loadVehicles = useCallback(async () => {
     setVehiclesLoading(true);
     try {
@@ -118,9 +137,18 @@ export default function PublicExplorer() {
         return data.map((remoteV) => {
           const existing = prev.find((p) => p.id === remoteV.id);
           if (!existing) return remoteV;
-          const existingTime = existing.lastSeenAt ? new Date(existing.lastSeenAt).getTime() : 0;
-          const remoteTime = remoteV.lastSeenAt ? new Date(remoteV.lastSeenAt).getTime() : 0;
-          return existingTime > remoteTime ? existing : { ...existing, ...remoteV };
+          // ถ้ารถจาก Server ไม่ได้ Live ให้ปรับสถานะ Standby ทันที
+          if (!remoteV.isLive || remoteV.latitude == null) {
+            return {
+              ...existing,
+              ...remoteV,
+              isLive: false,
+              latitude: null as any,
+              longitude: null as any,
+              speed: 0,
+            };
+          }
+          return { ...existing, ...remoteV };
         });
       });
       setLastUpdated(new Date());
@@ -168,11 +196,11 @@ export default function PublicExplorer() {
       });
   }, []);
 
-  // Auto-refresh ตำแหน่งรถรางทุกๆ 12 วินาที
+  // Auto-refresh ตำแหน่งรถรางทุกๆ 5 วินาที เพื่อความเป็น Realtime สูงสุด
   useEffect(() => {
     const timer = setInterval(() => {
       loadVehicles();
-    }, 12000);
+    }, 5000);
     return () => clearInterval(timer);
   }, [loadVehicles]);
 

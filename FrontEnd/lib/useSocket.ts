@@ -48,21 +48,44 @@ export function useRealtimeSocket({
 
     socket.on("vehicle:location", (data: any) => {
       if (onLocationUpdate && data) {
+        const isLive = data.isLive !== false && data.latitude !== null && data.latitude !== undefined;
         onLocationUpdate({
           id: Number(data.vehicleId || data.id),
           name: data.name,
           type: data.type || null,
           routeId: data.routeId || null,
-          latitude: Number(data.latitude),
-          longitude: Number(data.longitude),
-          lastSeenAt: data.lastSeenAt || new Date().toISOString(),
+          latitude: isLive ? Number(data.latitude) : null as any,
+          longitude: isLive ? Number(data.longitude) : null as any,
+          lastSeenAt: data.lastSeenAt || (isLive ? new Date().toISOString() : null),
           isActive: true,
-          isLive: true,
+          isLive: isLive,
           driverName: data.driverName || "คนขับออนไลน์",
           speed: typeof data.speed === "number" ? data.speed : Number(data.speed) || 0,
           heading: typeof data.heading === "number" ? data.heading : Number(data.heading) || 0,
           tripId: data.tripId,
           route: data.route || null,
+        });
+      }
+    });
+
+    socket.on("vehicle:stop", (data: any) => {
+      if (onLocationUpdate && data) {
+        const vehicleId = Number(data.vehicleId || data.id);
+        onLocationUpdate({
+          id: vehicleId,
+          name: data.name || "",
+          type: data.type || null,
+          routeId: data.routeId || null,
+          latitude: null as any,
+          longitude: null as any,
+          lastSeenAt: null,
+          isActive: true,
+          isLive: false,
+          driverName: "",
+          speed: 0,
+          heading: 0,
+          tripId: null,
+          route: null,
         });
       }
     });

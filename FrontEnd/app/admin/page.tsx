@@ -9,5 +9,5 @@ export default async function AdminPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=%2Fadmin");
   if (user.role !== "ADMIN") redirect("/explore");
-  return <div className="shell"><SiteHeader active="admin" /><AdminDashboard /></div>;
+  return <div className="shell"><SiteHeader active="admin" /><AdminDashboard initialTab="overview" /></div>;
 }

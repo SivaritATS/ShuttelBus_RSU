@@ -20,30 +20,33 @@ export const GET = withErrorHandling(async (request: Request) => {
 
     if (routes && routes.length > 0) {
       const routesWithGeometry = routes.map((route) => {
+        // เฉพาะ Route ที่ชื่อและรายการจุดจอดตรงกับ Mock เดิมทุกประการ ถึงจะใช้ mock geometry
         const matchingMock = MOCK_ROUTES.find(
-          (mr) => mr.id === route.id || mr.name === route.name
+            (mr) => mr.name.trim().toLowerCase() === route.name.trim().toLowerCase()
         );
-        const geometry =
-          matchingMock?.geometry && matchingMock.geometry.length > 0
-            ? matchingMock.geometry
-            : route.routeStops.map((rs) => [
-                Number(rs.stop.latitude),
-                Number(rs.stop.longitude),
-              ]);
+const stopsMatch =
+  matchingMock &&
+  matchingMock.stopIds.length === route.routeStops.length &&
+  matchingMock.stopIds.every((id, idx) => route.routeStops[idx]?.stopId === id);
 
-        return {
-          ...route,
-          geometry,
-        };
+const geometry =
+stopsMatch && matchingMock?.geometry && matchingMock.geometry.length > 0
+  ? matchingMock.geometry
+            : undefined;
+
+return {
+  ...route,
+  geometry,
+};
       });
 
-      return Response.json(routesWithGeometry);
+return Response.json(routesWithGeometry);
     }
   } catch (error) {
-    console.warn("[Routes API] Database unavailable, falling back to mock dataset");
-  }
+  console.warn("[Routes API] Database unavailable, falling back to mock dataset");
+}
 
-  return Response.json(getRoutesWithGeometry());
+return Response.json(getRoutesWithGeometry());
 });
 
 export const POST = withErrorHandling(async (request: Request) => {

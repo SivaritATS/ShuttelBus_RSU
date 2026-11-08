@@ -21,12 +21,15 @@ function MapController({
   focusTarget,
   fitStops,
   followedVehicleId,
+  selectedRouteId,
 }: {
   focusTarget: [number, number] | null;
   fitStops: Stop[];
   followedVehicleId?: number | null;
+  selectedRouteId?: number | null;
 }) {
   const map = useMap();
+  const prevRouteIdRef = useRef<number | null | undefined>(undefined);
   const initialFitDone = useRef(false);
 
   useEffect(() => {
@@ -41,16 +44,25 @@ function MapController({
   }, [focusTarget, map]);
 
   useEffect(() => {
-    if (!focusTarget && !followedVehicleId && fitStops.length > 0 && !initialFitDone.current) {
-      const bounds = fitStops.map(
-        (s) => [Number(s.latitude), Number(s.longitude)] as [number, number]
-      );
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
-      initialFitDone.current = true;
-    }
-  }, [fitStops, focusTarget, followedVehicleId, map]);
+      const routeChanged = prevRouteIdRef.current !== selectedRouteId;
+      prevRouteIdRef.current = selectedRouteId;
 
-  return null;
+      if (!focusTarget && !followedVehicleId && fitStops.length > 0) {
+        if (!initialFitDone.current || routeChanged) {
+          const bounds = fitStops.map(
+            (s) => [Number(s.latitude), Number(s.longitude)] as [number, number]
+          );
+          if (bounds.length === 1) {
+            map.panTo(bounds[0], { animate: true, duration: 0.8 });
+          } else if (bounds.length > 1) {
+            map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
+          }
+          initialFitDone.current = true;
+        }
+      }
+}, [fitStops, focusTarget, followedVehicleId, selectedRouteId, map]);
+
+return null;
 }
 
 interface CampusLiveMapProps {
@@ -133,76 +145,112 @@ export default function CampusLiveMap({
     };
   }, []);
 
-  // สถานะเก็บพิกัดถนนที่คำนวณแบบ Dynamic ผ่าน OSRM (สำหรับกรณี Route ที่ยังไม่มี geometry สำเร็จรูป)
+  // สถานะเก็บพิกัดถนนที่คำนวณแบบ Dynamic ผ่าน OSRM ตามจุดจอดจริง
   const [dynamicRoadCoords, setDynamicRoadCoords] = useState<[number, number][] | null>(null);
 
-  // คำนวณเส้นทางตามถนนผ่าน OSRM อัตโนมัติเมื่อสายรถไม่มี geometry สำเร็จรูป
+  // คำนวณเส้นทางตามถนนผ่าน OSRM อัตโนมัติเมื่อสายรถมีการกำหนดจุดจอด (ตั้งแต่ 2 จุดขึ้นไป)
   useEffect(() => {
-    // ถ้าปิดเส้นทาง หรือมี geometry ใน selectedRoute อยู่แล้ว ไม่ต้องคำนวณใหม่
-    if (!showRouteLine || (selectedRoute?.geometry && selectedRoute.geometry.length > 1)) {
-      setDynamicRoadCoords(null);
-      return;
-    }
-
-    if (routeStops.length < 2) {
-      setDynamicRoadCoords(null);
-      return;
-    }
-
-    let isCancelled = false;
-    const fetchOSRMRoute = async () => {
-      try {
-        const coordsStr = routeStops
-          .map((rs) => `${Number(rs.stop.longitude)},${Number(rs.stop.latitude)}`)
-          .join(";");
-        const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (!isCancelled && data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
-          const latLngs = data.routes[0].geometry.coordinates.map(
-            (c: [number, number]) => [c[1], c[0]] as [number, number]
-          );
-          setDynamicRoadCoords(latLngs);
-        }
-      } catch (err) {
-        console.warn("[CampusLiveMap] Could not fetch OSRM road geometry, falling back to direct line:", err);
+      if (!showRouteLine || routeStops.length < 2) {
+        setDynamicRoadCoords(null);
+        return;
       }
-    };
 
-    fetchOSRMRoute();
-    return () => {
-      isCancelled = true;
-    };
-  }, [selectedRoute, routeStops, showRouteLine]);
+        // ตรวจสอบว่า geometry เดิมใน selectedRoute สอดคล้องกับจุดจอดจริงหรือไม่
+        if (selectedRoute?.geometry && selectedRoute.geometry.length > 1) {
+          const firstStop = routeStops[0]?.stop;
+          const lastStop = routeStops[routeStops.length - 1]?.stop;
+          const firstGeom = selectedRoute.geometry[0];
+          const lastGeom = selectedRoute.geometry[selectedRoute.geometry.length - 1];
 
-  // พิกัดสำหรับเส้นทาง Polyline (ลำดับ: 1. geometry ใน Route -> 2. dynamicRoadCoords OSRM -> 3. เส้นตรงระหว่างจุดจอด)
+          const dist = (p1: [number, number], p2: [number, number]) =>
+            Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
+
+          // ตรวจสอบว่าพิกัดจุดแรกและจุดสุดท้ายตรงกับ Stop หรือไม่ (ในระยะ ~300 เมตร)
+          const firstOk = firstStop && dist([Number(firstStop.latitude), Number(firstStop.longitude)], firstGeom) < 0.003;
+          const lastOk = lastStop && dist([Number(lastStop.latitude), Number(lastStop.longitude)], lastGeom) < 0.003;
+
+          if (firstOk && lastOk) {
+            setDynamicRoadCoords(null);
+            return;
+          }
+        }
+
+        let isCancelled = false;
+        const fetchOSRMRoute = async () => {
+          try {
+            const coordsStr = routeStops
+              .map((rs) => `${Number(rs.stop.longitude)},${Number(rs.stop.latitude)}`)
+              .join(";");
+            const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson&continue_straight=false`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (!isCancelled && data.code === "Ok" && data.routes?.[0]?.geometry?.coordinates) {
+              const latLngs = data.routes[0].geometry.coordinates.map(
+                (c: [number, number]) => [c[1], c[0]] as [number, number]
+              );
+              setDynamicRoadCoords(latLngs);
+            }
+          } catch (err) {
+            console.warn("[CampusLiveMap] Could not fetch OSRM road geometry, falling back to direct line:", err);
+          }
+        };
+
+        fetchOSRMRoute();
+        return () => {
+          isCancelled = true;
+        };
+      }, [selectedRoute, routeStops, showRouteLine]);
+
+  // พิกัดสำหรับเส้นทาง Polyline (ลำดับ: 1. dynamicRoadCoords OSRM -> 2. geometry ที่ตรงกับจุดจอด -> 3. เส้นตรงระหว่างจุดจอดจริง)
   const polylineCoords = useMemo(() => {
     if (!showRouteLine) return [];
 
-    // 1. ถ้ามี geometry ที่ระบุแนวถนนจริงใน Route
-    if (selectedRoute?.geometry && selectedRoute.geometry.length > 1) {
-      return selectedRoute.geometry;
-    }
-
-    // 2. ถ้าคำนวณแนวถนน OSRM สำเร็จ
+    // 1. ถ้าคำนวณแนวถนนจริงจาก OSRM ผ่านจุดจอดล่าสุดสำเร็จ
     if (dynamicRoadCoords && dynamicRoadCoords.length > 1) {
       return dynamicRoadCoords;
     }
 
-    // 3. Fallback ลากเส้นตรงระหว่างจุดจอด
+    // 2. ถ้ามี geometry ที่ระบุใน Route และจุดแรก/สุดท้ายสอดคล้องกับจุดจอดจริง
+    if (selectedRoute?.geometry && selectedRoute.geometry.length > 1) {
+      if (routeStops.length >= 2) {
+        const firstStop = routeStops[0]?.stop;
+        const lastStop = routeStops[routeStops.length - 1]?.stop;
+        const firstGeom = selectedRoute.geometry[0];
+        const lastGeom = selectedRoute.geometry[selectedRoute.geometry.length - 1];
+
+        const dist = (p1: [number, number], p2: [number, number]) =>
+          Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
+
+        const firstOk = firstStop && dist([Number(firstStop.latitude), Number(firstStop.longitude)], firstGeom) < 0.003;
+        const lastOk = lastStop && dist([Number(lastStop.latitude), Number(lastStop.longitude)], lastGeom) < 0.003;
+
+        if (firstOk && lastOk) {
+          return selectedRoute.geometry;
+        }
+      } else {
+        return selectedRoute.geometry;
+      }
+    }
+
+    // 3. Fallback ลากเส้นตรงระหว่างจุดจอดจริง
     if (routeStops.length === 0) return [];
     return routeStops.map(
       (rs) => [Number(rs.stop.latitude), Number(rs.stop.longitude)] as [number, number]
     );
   }, [selectedRoute, dynamicRoadCoords, routeStops, showRouteLine]);
 
+      // จุดจอดที่จะแสดงบนแผนที่: ถ้าเลือก Route และมี routeStops ให้แสดงเฉพาะจุดจอดของ Route นั้น พร้อมเลขลำดับ 1, 2, 3...
+      const activeDisplayStops = useMemo(() => {
+        if (selectedRoute && routeStops.length > 0) {
+          return routeStops.map((rs) => rs.stop);
+        }
+        return stops;
+    }, [selectedRoute, routeStops, stops]);
+
   // พิกัดสำหรับ FitBounds
   const stopsToFit = useMemo(() => {
-    if (routeStops.length > 0) {
-      return routeStops.map((rs) => rs.stop);
-    }
-    return stops;
-  }, [routeStops, stops]);
+    return activeDisplayStops;
+  }, [activeDisplayStops]);
 
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -249,6 +297,7 @@ export default function CampusLiveMap({
           focusTarget={focusTarget}
           fitStops={stopsToFit}
           followedVehicleId={followedVehicleId}
+          selectedRouteId={selectedRoute?.id ?? null}
         />
 
         {/* เส้นทางเดินรถ (Route Polyline) */}
@@ -282,159 +331,160 @@ export default function CampusLiveMap({
 
         {/* หมุดจุดจอด / อาคารใน ม.รังสิต */}
         {showStops &&
-          stops.map((stop, index) => {
-            const lat = Number(stop.latitude);
-            const lng = Number(stop.longitude);
-            if (isNaN(lat) || isNaN(lng)) return null;
+            activeDisplayStops.map((stop, index) => {
+              const lat = Number(stop.latitude);
+              const lng = Number(stop.longitude);
+              if (isNaN(lat) || isNaN(lng)) return null;
 
-            const stopNumber = index + 1;
+              const stopNumber = index + 1;
 
-            return (
-              <Marker
-                key={`stop-${stop.id}`}
-                position={[lat, lng]}
-                icon={stopIcons(stopNumber)}
-                eventHandlers={{
-                  click: () => onSelectStop?.(stop),
-                }}
-              >
-                <Tooltip
-                  direction="top"
-                  offset={[0, -28]}
-                  opacity={0.96}
-                  permanent={false}
-                  className="campus-stop-tooltip"
+              return (
+                <Marker
+                  key={`stop-${stop.id}`}
+                  position={[lat, lng]}
+                  icon={stopIcons(stopNumber)}
+                  eventHandlers={{
+                    click: () => onSelectStop?.(stop),
+                  }}
                 >
-                  <span className="tooltip-title">{stop.nameTh}</span>
-                </Tooltip>
+                  <Tooltip
+                    direction="top"
+                    offset={[0, -28]}
+                    opacity={0.96}
+                    permanent={false}
+                    className="campus-stop-tooltip"
+                  >
+                    <span className="tooltip-title">{stop.nameTh}</span>
+                  </Tooltip>
 
-                <Popup className="campus-popup">
-                  <div className="popup-inner">
-                    <div className="popup-tag">จุดจอดที่ {stopNumber}</div>
-                    <h4 className="popup-title">{stop.nameTh}</h4>
-                    {stop.nameEn && <div className="popup-subtitle">{stop.nameEn}</div>}
-                    <div className="popup-divider" />
-                    <div className="popup-coords">
-                      <span className="coord-label">พิกัด GPS:</span>
-                      <code>
-                        {lat.toFixed(6)}, {lng.toFixed(6)}
-                      </code>
+                  <Popup className="campus-popup">
+                    <div className="popup-inner">
+                      <div className="popup-tag">จุดจอดที่ {stopNumber}</div>
+                      <h4 className="popup-title">{stop.nameTh}</h4>
+                      {stop.nameEn && <div className="popup-subtitle">{stop.nameEn}</div>}
+                      <div className="popup-divider" />
+                      <div className="popup-coords">
+                        <span className="coord-label">พิกัด GPS:</span>
+                        <code>
+                          {lat.toFixed(6)}, {lng.toFixed(6)}
+                        </code>
+                      </div>
                     </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-
-        {/* หมุดรถราง: แสดงเฉพาะรถที่มี GPS สดจากมือถือคนขับเท่านั้น (ไม่แสดง mock อยู่นิ่ง) */}
-        {showVehicles &&
-          vehicles
-            .filter((vehicle) => {
-              const lat = Number(vehicle.latitude);
-              const lng = Number(vehicle.longitude);
-              if (isNaN(lat) || isNaN(lng) || lat === 0) return false;
-
-              // แสดงเฉพาะรถที่กำลังแชร์พิกัดสดจากมือถือคนขับ
-              const isLive = Boolean(
-                vehicle.isLive ||
-                (vehicle.lastSeenAt && (Date.now() - new Date(vehicle.lastSeenAt).getTime()) < 3 * 60 * 1000)
+                  </Popup>
+                </Marker>
               );
-              return isLive;
             })
-            .map((vehicle) => {
-              const lat = Number(vehicle.latitude);
-              const lng = Number(vehicle.longitude);
-              const isLive = true;
+          }
 
-              const color = vehicle.route?.color || "#165dff";
-              const icon = getVehicleIcon(color, isLive);
+        {/* หมุดรถราง: แสดงเฉพาะรถที่มี GPS สดจากมือถือคนขับเท่านั้น (ไม่แสดง mock อยู่นิ่ง) */ }
+        { showVehicles &&
+            vehicles
+              .filter((vehicle) => {
+                const lat = Number(vehicle.latitude);
+                const lng = Number(vehicle.longitude);
+                if (isNaN(lat) || isNaN(lng) || lat === 0) return false;
 
-            return (
-              <Marker
-                key={`vehicle-${vehicle.id}`}
-                position={[lat, lng]}
-                icon={icon}
-                eventHandlers={{
-                  click: () => onSelectVehicle?.(vehicle),
-                }}
-              >
-                <Tooltip
-                  direction="bottom"
-                  offset={[0, 15]}
-                  opacity={0.96}
-                  permanent={true}
-                  className={`campus-vehicle-tooltip ${isLive ? "tooltip-live" : "tooltip-standby"}`}
-                >
-                  <span className="vehicle-tooltip-name">
-                    {isLive ? "🟢 " : "⚪ "}
-                    {vehicle.name}
-                    {isLive && vehicle.speed ? ` (${Number(vehicle.speed).toFixed(0)} km/h)` : ""}
-                  </span>
-                </Tooltip>
+                // แสดงเฉพาะรถที่กำลังแชร์พิกัดสดจากมือถือคนขับ
+                const isLive = Boolean(
+                  vehicle.isLive ||
+                  (vehicle.lastSeenAt && (Date.now() - new Date(vehicle.lastSeenAt).getTime()) < 3 * 60 * 1000)
+                );
+                return isLive;
+              })
+              .map((vehicle) => {
+                const lat = Number(vehicle.latitude);
+                const lng = Number(vehicle.longitude);
+                const isLive = true;
 
-                <Popup className="campus-popup vehicle-popup">
-                  <div className="popup-inner">
-                    <div className={`vehicle-popup-badge ${isLive ? "live" : "standby"}`}>
-                      {isLive ? (
-                        <>
-                          <span className="live-dot" /> กำลังแชร์พิกัดสด (GPS คนขับ)
-                        </>
-                      ) : (
-                        <>
-                          <span className="standby-dot" /> สแตนด์บาย (รอคนขับเข้าสู่ระบบ)
-                        </>
-                      )}
-                    </div>
-                    <h4 className="popup-title">{vehicle.name}</h4>
-                    <div className="popup-meta">
-                      <span className="popup-type">{vehicle.type || "รถรางไฟฟ้า"}</span>
-                      {vehicle.route && (
-                        <span
-                          className="popup-route-pill"
-                          style={{
-                            borderColor: vehicle.route.color || "#165dff",
-                            color: vehicle.route.color || "#165dff",
-                          }}
-                        >
-                          {vehicle.route.name}
-                        </span>
-                      )}
-                    </div>
+                const color = vehicle.route?.color || "#165dff";
+                const icon = getVehicleIcon(color, isLive);
 
-                    {isLive && vehicle.driverName && (
-                      <div className="popup-driver-row" style={{ fontSize: 12, margin: "4px 0", color: "var(--ink-soft)" }}>
-                        👤 คนขับ: <strong style={{ color: "var(--navy)" }}>{vehicle.driverName}</strong>
+                return (
+                  <Marker
+                    key={`vehicle-${vehicle.id}`}
+                    position={[lat, lng]}
+                    icon={icon}
+                    eventHandlers={{
+                      click: () => onSelectVehicle?.(vehicle),
+                    }}
+                  >
+                    <Tooltip
+                      direction="bottom"
+                      offset={[0, 15]}
+                      opacity={0.96}
+                      permanent={true}
+                      className={`campus-vehicle-tooltip ${isLive ? "tooltip-live" : "tooltip-standby"}`}
+                    >
+                      <span className="vehicle-tooltip-name">
+                        {isLive ? "🟢 " : "⚪ "}
+                        {vehicle.name}
+                        {isLive && vehicle.speed ? ` (${Number(vehicle.speed).toFixed(0)} km/h)` : ""}
+                      </span>
+                    </Tooltip>
+
+                    <Popup className="campus-popup vehicle-popup">
+                      <div className="popup-inner">
+                        <div className={`vehicle-popup-badge ${isLive ? "live" : "standby"}`}>
+                          {isLive ? (
+                            <>
+                              <span className="live-dot" /> กำลังแชร์พิกัดสด (GPS คนขับ)
+                            </>
+                          ) : (
+                            <>
+                              <span className="standby-dot" /> สแตนด์บาย (รอคนขับเข้าสู่ระบบ)
+                            </>
+                          )}
+                        </div>
+                        <h4 className="popup-title">{vehicle.name}</h4>
+                        <div className="popup-meta">
+                          <span className="popup-type">{vehicle.type || "รถรางไฟฟ้า"}</span>
+                          {vehicle.route && (
+                            <span
+                              className="popup-route-pill"
+                              style={{
+                                borderColor: vehicle.route.color || "#165dff",
+                                color: vehicle.route.color || "#165dff",
+                              }}
+                            >
+                              {vehicle.route.name}
+                            </span>
+                          )}
+                        </div>
+
+                        {isLive && vehicle.driverName && (
+                          <div className="popup-driver-row" style={{ fontSize: 12, margin: "4px 0", color: "var(--ink-soft)" }}>
+                            👤 คนขับ: <strong style={{ color: "var(--navy)" }}>{vehicle.driverName}</strong>
+                          </div>
+                        )}
+
+                        {isLive && typeof vehicle.speed === "number" && vehicle.speed > 0 && (
+                          <div className="popup-speed-row" style={{ fontSize: 12, margin: "2px 0 6px", color: "var(--teal)" }}>
+                            ⚡ ความเร็วปัจจุบัน: <strong>{Number(vehicle.speed).toFixed(1)} km/h</strong>
+                          </div>
+                        )}
+
+                        <div className="popup-divider" />
+                        <div className="popup-coords">
+                          <span className="coord-label">{isLive ? "พิกัด GPS มือถือสด:" : "พิกัดล่าสุด:"}</span>
+                          <code>
+                            {lat.toFixed(6)}, {lng.toFixed(6)}
+                          </code>
+                        </div>
+                        {vehicle.lastSeenAt && (
+                          <div className="popup-timestamp">
+                            {isLive ? "อัปเดตสดเมื่อ: " : "สัญญาณล่าสุด: "}
+                            {new Date(vehicle.lastSeenAt).toLocaleTimeString("th-TH", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-
-                    {isLive && typeof vehicle.speed === "number" && vehicle.speed > 0 && (
-                      <div className="popup-speed-row" style={{ fontSize: 12, margin: "2px 0 6px", color: "var(--teal)" }}>
-                        ⚡ ความเร็วปัจจุบัน: <strong>{Number(vehicle.speed).toFixed(1)} km/h</strong>
-                      </div>
-                    )}
-
-                    <div className="popup-divider" />
-                    <div className="popup-coords">
-                      <span className="coord-label">{isLive ? "พิกัด GPS มือถือสด:" : "พิกัดล่าสุด:"}</span>
-                      <code>
-                        {lat.toFixed(6)}, {lng.toFixed(6)}
-                      </code>
-                    </div>
-                    {vehicle.lastSeenAt && (
-                      <div className="popup-timestamp">
-                        {isLive ? "อัปเดตสดเมื่อ: " : "สัญญาณล่าสุด: "}
-                        {new Date(vehicle.lastSeenAt).toLocaleTimeString("th-TH", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
+                    </Popup>
+                  </Marker>
+                );
+              })}
       </MapContainer>
     </div>
   );

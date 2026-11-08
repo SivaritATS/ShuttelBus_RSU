@@ -13,20 +13,24 @@ export const GET = withErrorHandling(async (_request: Request, { params }: Conte
   });
   if (!route) return Response.json({ error: { message: "ไม่พบ Route", code: "NOT_FOUND" } }, { status: 404 });
 
-  // สร้าง geometry coordinates array [ [lat, lng], ... ] สำหรับวาดเส้นทางตามแนวถนน
-  const matchingMock = MOCK_ROUTES.find((mr) => mr.id === route.id || mr.name === route.name);
-  const geometry =
-    matchingMock?.geometry && matchingMock.geometry.length > 0
-      ? matchingMock.geometry
-      : route.routeStops.map((rs) => [
-          Number(rs.stop.latitude),
-          Number(rs.stop.longitude),
-        ]);
+  // เฉพาะ Route ที่ชื่อและรายการจุดจอดตรงกับ Mock เดิมทุกประการ ถึงจะใช้ mock geometry
+  const matchingMock = MOCK_ROUTES.find(
+    (mr) => mr.name.trim().toLowerCase() === route.name.trim().toLowerCase()
+  );
+  const stopsMatch =
+    matchingMock &&
+    matchingMock.stopIds.length === route.routeStops.length &&
+    matchingMock.stopIds.every((id, idx) => route.routeStops[idx]?.stopId === id);
 
-  return Response.json({
-    ...route,
-    geometry,
-  });
+  const geometry =
+  stopsMatch && matchingMock?.geometry && matchingMock.geometry.length > 0
+    ? matchingMock.geometry
+      : undefined;
+
+return Response.json({
+  ...route,
+  geometry,
+});
 });
 
 export const PATCH = withErrorHandling(async (request: Request, { params }: Context) => {

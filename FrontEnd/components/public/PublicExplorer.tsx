@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Route, RouteStop, Stop, Vehicle } from "@/types";
 import { useRealtimeSocket } from "@/lib/useSocket";
+import { useLanguage } from "@/lib/languageContext";
 
 // โหลด CampusLiveMap แบบ dynamic เพื่อหลีกเลี่ยง Leaflet window error ใน SSR
 const CampusLiveMap = dynamic(
@@ -32,6 +33,7 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 export default function PublicExplorer() {
+  const { lang, t } = useLanguage();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [allStops, setAllStops] = useState<Stop[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
@@ -291,13 +293,13 @@ export default function PublicExplorer() {
           <div>
             <div className="eyebrow-badge">
               <span className="live-pulse" />
-              RSU CAMPUS REAL-TIME TRANSIT
+              {t("heroBadge")}
             </div>
             <h1 className="portal-title">
-              แผนที่ติดตามรถราง <span>ม.รังสิต</span>
+              {t("heroTitlePrefix")}<span>{t("heroTitleSpan")}</span>
             </h1>
             <p className="portal-desc">
-              ระบบแสดงตำแหน่งรถรางไฟฟ้าและพิกัดจุดจอด 14 อาคารภายในมหาวิทยาลัยรังสิตแบบสด
+              {t("heroDesc")}
             </p>
           </div>
 
@@ -310,10 +312,10 @@ export default function PublicExplorer() {
                 </svg>
               </span>
               <div>
-                <strong className="stat-num">{liveVehiclesCount} คัน</strong>
+                <strong className="stat-num">{liveVehiclesCount} {lang === "en" ? (liveVehiclesCount === 1 ? "Tram" : "Trams") : "คัน"}</strong>
                 <span className="stat-label">
-                  {liveVehiclesCount > 0 ? "แชร์พิกัด GPS สด" : "รอคนขับเปิด GPS"}
-                  {standbyVehiclesCount > 0 && ` (สแตนด์บาย ${standbyVehiclesCount})`}
+                  {liveVehiclesCount > 0 ? t("statSharingGps") : t("statWaitingGps")}
+                  {standbyVehiclesCount > 0 && (lang === "en" ? ` (Standby ${standbyVehiclesCount})` : ` (สแตนด์บาย ${standbyVehiclesCount})`)}
                 </span>
               </div>
             </div>
@@ -326,8 +328,8 @@ export default function PublicExplorer() {
                 </svg>
               </span>
               <div>
-                <strong className="stat-num">{allStops.length} จุด</strong>
-                <span className="stat-label">ป้ายรถรอบ ม.</span>
+                <strong className="stat-num">{allStops.length} {lang === "en" ? "Stops" : "จุด"}</strong>
+                <span className="stat-label">{t("statStopsLabel")}</span>
               </div>
             </div>
 
@@ -337,7 +339,7 @@ export default function PublicExplorer() {
                 className="button-refresh"
                 onClick={loadVehicles}
                 disabled={vehiclesLoading}
-                title="คลิกเพื่ออัปเดตตำแหน่งรถทันที"
+                title={lang === "en" ? "Click to refresh vehicle GPS" : "คลิกเพื่ออัปเดตตำแหน่งรถทันที"}
               >
                 <svg
                   className={vehiclesLoading ? "spin" : ""}
@@ -352,11 +354,11 @@ export default function PublicExplorer() {
                 >
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" />
                 </svg>
-                {vehiclesLoading ? "กำลังอัปเดต…" : "รีเฟรชตำแหน่ง"}
+                {vehiclesLoading ? t("refreshing") : t("refreshBtn")}
               </button>
               <span className="last-updated-text" suppressHydrationWarning>
                 <span className={`status-indicator-dot ${isSocketConnected ? "live" : "sync"}`} />
-                {isSocketConnected ? "Realtime สด" : "Polling"} · {mounted ? lastUpdated.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--"}
+                {isSocketConnected ? t("realtimeLive") : t("polling")} · {mounted ? lastUpdated.toLocaleTimeString(lang === "en" ? "en-US" : "th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--"}
               </span>
             </div>
           </div>
@@ -368,13 +370,13 @@ export default function PublicExplorer() {
         <div className="container-wide controls-flex">
           {/* ตัวเลือกสายรถ */}
           <div className="route-pills-wrap">
-            <span className="control-label">สายรถราง:</span>
+            <span className="control-label">{t("routesLabel")}</span>
             <button
               type="button"
               className={`route-pill ${selectedRoute === null ? "active" : ""}`}
               onClick={() => setSelectedRoute(null)}
             >
-              <span>ทั้งหมด (14 อาคาร)</span>
+              <span>{t("allRoutes")}</span>
             </button>
             {routes.map((route) => (
               <button
@@ -392,7 +394,7 @@ export default function PublicExplorer() {
                 />
                 <span>{route.name}</span>
                 {route._count?.routeStops ? (
-                  <small className="pill-badge">{route._count.routeStops} ป้าย</small>
+                  <small className="pill-badge">{route._count.routeStops} {lang === "en" ? "stops" : "ป้าย"}</small>
                 ) : null}
               </button>
             ))}
@@ -406,7 +408,7 @@ export default function PublicExplorer() {
                 checked={showVehicles}
                 onChange={(e) => setShowVehicles(e.target.checked)}
               />
-              <span>รถราง</span>
+              <span>{t("layerVehicles")}</span>
             </label>
             <label className="toggle-chip">
               <input
@@ -414,7 +416,7 @@ export default function PublicExplorer() {
                 checked={showStops}
                 onChange={(e) => setShowStops(e.target.checked)}
               />
-              <span>ป้ายหยุด</span>
+              <span>{t("layerStops")}</span>
             </label>
             <label className="toggle-chip">
               <input
@@ -422,7 +424,7 @@ export default function PublicExplorer() {
                 checked={showRouteLine}
                 onChange={(e) => setShowRouteLine(e.target.checked)}
               />
-              <span>เส้นทาง</span>
+              <span>{t("layerRoutes")}</span>
             </label>
             <button
               type="button"
@@ -434,22 +436,22 @@ export default function PublicExplorer() {
                   handleFocusVehicle(vehicles[0]);
                 }
               }}
-              title="ติดตามรถรางตามพิกัดมือถือสด"
+              title={lang === "en" ? "Track tram with live mobile GPS" : "ติดตามรถรางตามพิกัดมือถือสด"}
               style={{
                 background: followedVehicleId ? "#165dff" : undefined,
                 color: followedVehicleId ? "#ffffff" : undefined,
                 fontWeight: 600,
               }}
             >
-              {followedVehicleId ? "🎯 กำลังติดตามพิกัดสด" : "🎯 ติดตามรถสด"}
+              {followedVehicleId ? t("trackVehicleActive") : t("trackVehicle")}
             </button>
             <button
               type="button"
               className="button-reset-view"
               onClick={handleResetMap}
-              title="ดูภาพรวมทั้งมหาวิทยาลัย"
+              title={lang === "en" ? "View entire campus" : "ดูภาพรวมทั้งมหาวิทยาลัย"}
             >
-              ภาพรวม ม.รังสิต
+              {t("overviewCampus")}
             </button>
           </div>
         </div>
@@ -461,13 +463,13 @@ export default function PublicExplorer() {
           <div className="map-outer-card">
             {activeItemName && (
               <div className="focus-indicator-banner">
-                <span>{followedVehicleId ? "🎯 กำลังติดตามพิกัดสดจากมือถือ: " : "กำลังโฟกัส: "}<strong>{activeItemName}</strong></span>
+                <span>{followedVehicleId ? t("focusingVehicle") : t("focusing")}<strong>{activeItemName}</strong></span>
                 <button
                   type="button"
                   onClick={handleResetMap}
                   className="button-clear-focus"
                 >
-                  ✕ ยกเลิก
+                  {t("cancelFocus")}
                 </button>
               </div>
             )}
@@ -502,12 +504,12 @@ export default function PublicExplorer() {
                       <path d="M3 11h18M7 15h.01M17 15h.01M5 18v2M19 18v2" />
                     </svg>
                   </span>
-                  ขบวนรถในระบบ ({vehicles.length} คัน)
+                  {t("fleetTitlePrefix")} ({vehicles.length} {lang === "en" ? (vehicles.length === 1 ? "Tram" : "Trams") : "คัน"})
                 </h3>
                 <p className="panel-sub">
                   {liveVehiclesCount > 0
-                    ? `พบรถรางกำลังแชร์พิกัด GPS สด ${liveVehiclesCount} คัน (สแตนด์บาย ${standbyVehiclesCount} คัน)`
-                    : "ยังมีรถในระบบครบถ้วน (รอคนขับเข้าสู่ระบบผ่านแอปมือถือเพื่อเริ่มวิ่ง)"}
+                  ? (lang === "en" ? `${liveVehiclesCount} tram(s) sharing live GPS (${standbyVehiclesCount} on standby)` : `พบรถรางกำลังแชร์พิกัด GPS สด ${liveVehiclesCount} คัน (สแตนด์บาย ${standbyVehiclesCount} คัน)`)
+                    : t("fleetSubWait")}
                 </p>
               </div>
               <span className={`badge-live-count ${liveVehiclesCount > 0 ? "has-live" : "no-live"}`}>
@@ -517,8 +519,8 @@ export default function PublicExplorer() {
 
             {vehicles.length === 0 ? (
               <div className="empty-box">
-                <p>ยังไม่มีรถในระบบ</p>
-                <small>เมื่อมีรถและคนขับเริ่มเดินเครื่อง ตำแหน่งจะปรากฏบนแผนที่ทันที</small>
+                <p>{t("noVehicles")}</p>
+                <small>{t("noVehiclesSub")}</small>
               </div>
             ) : (
               <div className="vehicle-card-list">
@@ -553,12 +555,12 @@ export default function PublicExplorer() {
                                   color: isLive ? "#059669" : "#64748b",
                                 }}
                               >
-                                {isLive ? "● LIVE GPS" : "⚪ สแตนด์บาย"}
+                                {isLive ? t("liveGpsBadge") : t("standbyBadge")}
                               </span>
                             </div>
                             <div className="vehicle-type-tag">
-                              {v.type || "รถรางไฟฟ้า"} · {v.route?.name || "สายทั่วไป"}
-                              {isLive && v.driverName ? ` · 👤 คนขับ: ${v.driverName}` : ""}
+                              {v.type || t("electricTram")} · {v.route?.name || t("generalRoute")}
+                              {isLive && v.driverName ? ` · ${t("driverLabel")}${v.driverName}` : ""}
                             </div>
                           </div>
                         </div>
@@ -578,7 +580,7 @@ export default function PublicExplorer() {
                             if (isLive) handleFocusVehicle(v);
                           }}
                         >
-                          {isFollowed ? "🎯 กำลังติดตาม" : isLive ? "🎯 ติดตามพิกัด" : "รอเปิด GPS"}
+                          {isFollowed ? t("trackingBtn") : isLive ? t("trackLiveBtn") : t("waitingGpsBtn")}
                         </button>
                       </div>
 
@@ -586,21 +588,21 @@ export default function PublicExplorer() {
                         <div className="vehicle-coords">
                           {isLive ? (
                             <>
-                              <span style={{ color: "#059669", fontWeight: 700 }}>GPS สดจากมือถือ: </span>
+                              <span style={{ color: "#059669", fontWeight: 700 }}>{t("gpsCoordsLive")}</span>
                               {Number(v.latitude).toFixed(6)}, {Number(v.longitude).toFixed(6)}
                               {typeof v.speed === "number" && v.speed > 0 ? ` · ⚡ ${Number(v.speed).toFixed(1)} km/h` : ""}
                             </>
                           ) : (
                             <>
-                              <span style={{ color: "#64748b" }}>สถานะพิกัด: </span>
-                              รอสัญญาณ GPS จากมือถือคนขับ
+                              <span style={{ color: "#64748b" }}>{t("coordsStatus")}</span>
+                              {t("waitingGpsSignal")}
                             </>
                           )}
                         </div>
                         <div className="vehicle-time">
                           {isLive
-                            ? "กำลังแชร์สด"
-                            : "ออฟไลน์"}
+                          ? t("sharingLive")
+                            : t("offline")}
                         </div>
                       </div>
                     </div>
@@ -621,16 +623,16 @@ export default function PublicExplorer() {
                       <circle cx="12" cy="9" r="2.5" />
                     </svg>
                   </span>
-                  จุดจอดและอาคารในมหาวิทยาลัย
+                  {t("stopsTitle")}
                 </h3>
                 <p className="panel-sub">
-                  พิกัด 14 อาคารตามแนวเส้นทางรถราง (คลิกเพื่อเลื่อนดูบนแผนที่)
+                  {t("stopsSub")}
                 </p>
               </div>
               <div className="search-wrap">
                 <input
                   type="text"
-                  placeholder="ค้นหาชื่อตึก / อาคาร…"
+                  placeholder={t("searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="input-search"
@@ -649,21 +651,21 @@ export default function PublicExplorer() {
                 >
                   <div className="stop-num-badge">{index + 1}</div>
                   <div className="stop-text-col">
-                    <strong className="stop-th">{stop.nameTh}</strong>
-                    <span className="stop-en-sub">{stop.nameEn || "RSU Campus"}</span>
+                    <strong className="stop-th">{lang === "en" ? (stop.nameEn || stop.nameTh) : stop.nameTh}</strong>
+                    <span className="stop-en-sub">{lang === "en" ? stop.nameTh : (stop.nameEn || "RSU Campus")}</span>
                   </div>
                   <div className="stop-coords-col">
                     <code>
                       {Number(stop.latitude).toFixed(6)}, {Number(stop.longitude).toFixed(6)}
                     </code>
-                    <span className="btn-locate-text">คลิกเพื่อดู ↗</span>
+                    <span className="btn-locate-text">{t("clickToView")}</span>
                   </div>
                 </div>
               ))}
 
               {filteredStops.length === 0 && (
                 <div className="empty-box">
-                  <p>ไม่พบอาคารที่ตรงกับ "{searchQuery}"</p>
+                  <p>{lang === "en" ? `No buildings found matching "${searchQuery}"` : `ไม่พบอาคารที่ตรงกับ "${searchQuery}"`}</p>
                 </div>
               )}
             </div>
@@ -674,10 +676,10 @@ export default function PublicExplorer() {
       <footer className="portal-footer">
         <div className="container-wide footer-inner">
           <div>
-            <strong>มหาวิทยาลัยรังสิต (Rangsit University)</strong> · บริการรถรางรับส่งภายในวิทยาเขต
+            <strong>{t("footerUni")}</strong> · {t("footerService")}
           </div>
           <div className="footer-links">
-            <span>อิงพิกัดทางเข้า-ออก และตึก 2-19 ครบ 14 จุด</span>
+            <span>{t("footerStopsNote")}</span>
           </div>
         </div>
       </footer>

@@ -2329,6 +2329,85 @@ td {
 }
 
 /* ========================================================
+   LANGUAGE TOGGLE (TH / EN)
+   ======================================================== */
+.lang-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 99px;
+  padding: 3px 5px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.lang-toggle-btn:hover {
+  border-color: #b9cbe7;
+}
+
+.lang-chip {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.lang-chip:hover {
+  color: var(--ink);
+}
+
+.lang-chip.active {
+  background: #165dff;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(22, 93, 255, 0.35);
+}
+
+.lang-divider {
+  font-size: 11px;
+  color: var(--line-strong, #cbd5e1);
+  font-weight: 400;
+  padding: 0 1px;
+}
+
+[data-theme="dark"] .lang-toggle-btn {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .lang-toggle-btn:hover {
+  background: #253349;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .lang-chip {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .lang-chip:hover {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .lang-chip.active {
+  background: #2563eb;
+  color: #ffffff !important;
+  box-shadow: 0 1px 6px rgba(37, 99, 235, 0.5);
+}
+
+[data-theme="dark"] .lang-divider {
+  color: #475569;
+}
+
+/* ========================================================
    DARK MODE COMPREHENSIVE STYLES
    ======================================================== */
 [data-theme="dark"] {

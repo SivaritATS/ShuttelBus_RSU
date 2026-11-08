@@ -3,6 +3,9 @@ import Image from "next/image";
 import { getCurrentUser } from "@backend/lib/auth";
 import LogoutButton from "@/components/auth/LogoutButton";
 import ThemeToggle from "@/components/layout/ThemeToggle";
+import LanguageToggle from "@/components/layout/LanguageToggle";
+import HeaderBrandText from "@/components/layout/HeaderBrandText";
+import HeaderAdminLinks from "@/components/layout/HeaderAdminLinks";
 
 export default async function SiteHeader({ active }: { active: "public" | "admin" }) {
   const user = await getCurrentUser();
@@ -20,21 +23,13 @@ export default async function SiteHeader({ active }: { active: "public" | "admin
             priority
           />
         </span>
-        <span className="brand-text">
-          <span className="brand-title">Shuttle Bus RSU</span>
-          <span className="brand-subtitle">ระบบติดตามรถราง ม.รังสิต</span>
-        </span>
+        <HeaderBrandText />
       </Link>
 
       <nav className="topnav">
         {user?.role === "ADMIN" ? (
           <div className="admin-nav-group">
-            <Link className={`nav-link ${active === "public" ? "active" : ""}`} href="/">
-              แผนที่หลัก
-            </Link>
-            <Link className={`nav-link ${active === "admin" ? "active" : ""}`} href="/admin">
-              ระบบจัดการ (Admin)
-            </Link>
+            <HeaderAdminLinks active={active} />
             <span className="account-name">{user.username} ({user.role})</span>
             <LogoutButton />
           </div>
@@ -44,6 +39,9 @@ export default async function SiteHeader({ active }: { active: "public" | "admin
             <span className="live-text">RSU Campus Live</span>
           </div>
         )}
+
+        {/* ปุ่มสลับภาษา TH / EN */}
+        <LanguageToggle />
 
         {/* ปุ่มสลับ Light / Dark Mode */}
         <ThemeToggle />

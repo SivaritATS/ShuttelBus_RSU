@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/languageContext";
 
 export const metadata: Metadata = {
   title: "Shuttle Bus RSU | University Shuttle",
@@ -26,16 +27,20 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             __html: `
               (function() {
                 try {
-                  var stored = localStorage.getItem('rsu_theme');
-                  var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                  var storedTheme = localStorage.getItem('rsu_theme');
+                  var theme = storedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
                   document.documentElement.setAttribute('data-theme', theme);
+                  var storedLang = localStorage.getItem('rsu_lang');
+                  if (storedLang) document.documentElement.setAttribute('lang', storedLang);
                 } catch (e) {}
               })();
             `,
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

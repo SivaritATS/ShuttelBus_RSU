@@ -13,6 +13,7 @@ import {
   useMap,
 } from "react-leaflet";
 import type { Route, RouteStop, Stop, Vehicle } from "@/types";
+import { useLanguage } from "@/lib/languageContext";
 
 const RSU_CAMPUS_CENTER: [number, number] = [13.9658, 100.5860];
 const DEFAULT_ZOOM = 16;
@@ -57,25 +58,25 @@ function MapController({
   }, [focusTarget, map]);
 
   useEffect(() => {
-      const routeChanged = prevRouteIdRef.current !== selectedRouteId;
-      prevRouteIdRef.current = selectedRouteId;
+    const routeChanged = prevRouteIdRef.current !== selectedRouteId;
+    prevRouteIdRef.current = selectedRouteId;
 
-      if (!focusTarget && !followedVehicleId && fitStops.length > 0) {
-        if (!initialFitDone.current || routeChanged) {
-          const bounds = fitStops.map(
-            (s) => [Number(s.latitude), Number(s.longitude)] as [number, number]
-          );
-          if (bounds.length === 1) {
-            map.panTo(bounds[0], { animate: true, duration: 0.8 });
-          } else if (bounds.length > 1) {
-            map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
-          }
-          initialFitDone.current = true;
+    if (!focusTarget && !followedVehicleId && fitStops.length > 0) {
+      if (!initialFitDone.current || routeChanged) {
+        const bounds = fitStops.map(
+          (s) => [Number(s.latitude), Number(s.longitude)] as [number, number]
+        );
+        if (bounds.length === 1) {
+          map.panTo(bounds[0], { animate: true, duration: 0.8 });
+        } else if (bounds.length > 1) {
+          map.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
         }
+        initialFitDone.current = true;
       }
-}, [fitStops, focusTarget, followedVehicleId, selectedRouteId, map]);
+    }
+  }, [fitStops, focusTarget, followedVehicleId, selectedRouteId, map]);
 
-return null;
+  return null;
 }
 
 interface CampusLiveMapProps {
@@ -105,6 +106,7 @@ export default function CampusLiveMap({
   onSelectStop,
   onSelectVehicle,
 }: CampusLiveMapProps) {
+  const { lang } = useLanguage();
   // สร้าง icon สำหรับรถราง (รองรับทั้งสถานะ Live GPS คนขับ และ สแตนด์บาย)
   const getVehicleIcon = useMemo(() => {
     const cache = new Map<string, L.DivIcon>();
@@ -220,13 +222,13 @@ export default function CampusLiveMap({
     );
   }, [selectedRoute, dynamicRoadCoords, routeStops, showRouteLine]);
 
-      // จุดจอดที่จะแสดงบนแผนที่: ถ้าเลือก Route และมี routeStops ให้แสดงเฉพาะจุดจอดของ Route นั้น พร้อมเลขลำดับ 1, 2, 3...
-      const activeDisplayStops = useMemo(() => {
-        if (selectedRoute && routeStops.length > 0) {
-          return routeStops.map((rs) => rs.stop);
-        }
-        return stops;
-    }, [selectedRoute, routeStops, stops]);
+  // จุดจอดที่จะแสดงบนแผนที่: ถ้าเลือก Route และมี routeStops ให้แสดงเฉพาะจุดจอดของ Route นั้น พร้อมเลขลำดับ 1, 2, 3...
+  const activeDisplayStops = useMemo(() => {
+    if (selectedRoute && routeStops.length > 0) {
+      return routeStops.map((rs) => rs.stop);
+    }
+    return stops;
+  }, [selectedRoute, routeStops, stops]);
 
   // พิกัดสำหรับ FitBounds
   const stopsToFit = useMemo(() => {
@@ -312,160 +314,170 @@ export default function CampusLiveMap({
 
         {/* หมุดจุดจอด / อาคารใน ม.รังสิต */}
         {showStops &&
-            activeDisplayStops.map((stop, index) => {
-              const lat = Number(stop.latitude);
-              const lng = Number(stop.longitude);
-              if (isNaN(lat) || isNaN(lng)) return null;
+          activeDisplayStops.map((stop, index) => {
+            const lat = Number(stop.latitude);
+            const lng = Number(stop.longitude);
+            if (isNaN(lat) || isNaN(lng)) return null;
 
-              const stopNumber = index + 1;
+            const stopNumber = index + 1;
+
+            return (
+              <Marker
+                key={`stop-${stop.id}`}
+                position={[lat, lng]}
+                icon={stopIcons(stopNumber)}
+                eventHandlers={{
+                  click: () => onSelectStop?.(stop),
+                }}
+              >
+                <Tooltip
+                  direction="top"
+                  offset={[0, -28]}
+                  opacity={0.96}
+                  permanent={false}
+                  className="campus-stop-tooltip"
+                >
+                  <span className="tooltip-title">
+                    {lang === "en" ? (stop.nameEn || stop.nameTh) : stop.nameTh}
+                  </span>
+                </Tooltip>
+
+                <Popup className="campus-popup">
+                  <div className="popup-inner">
+                    <div className="popup-tag">
+                      {lang === "en" ? `Stop #${stopNumber}` : `จุดจอดที่ ${stopNumber}`}
+                    </div>
+                    <h4 className="popup-title">
+                      {lang === "en" ? (stop.nameEn || stop.nameTh) : stop.nameTh}
+                    </h4>
+                    <div className="popup-subtitle">
+                      {lang === "en" ? stop.nameTh : (stop.nameEn || "RSU Campus")}
+                    </div>
+                    <div className="popup-divider" />
+                    <div className="popup-coords">
+                      <span className="coord-label">
+                        {lang === "en" ? "GPS Coordinates:" : "พิกัด GPS:"}
+                      </span>
+                      <code>
+                        {lat.toFixed(6)}, {lng.toFixed(6)}
+                      </code>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })
+        }
+
+        {/* หมุดรถราง: แสดงเฉพาะรถที่มี GPS สดจากมือถือคนขับเท่านั้น (ไม่แสดง mock อยู่นิ่ง) */}
+        {showVehicles &&
+          vehicles
+            .filter((vehicle) => {
+              const lat = Number(vehicle.latitude);
+              const lng = Number(vehicle.longitude);
+              if (isNaN(lat) || isNaN(lng) || lat === 0) return false;
+
+              // แสดงเฉพาะรถที่กำลังแชร์พิกัดสดจากมือถือคนขับ
+              const isLive = Boolean(
+                vehicle.isLive ||
+                (vehicle.lastSeenAt && (Date.now() - new Date(vehicle.lastSeenAt).getTime()) < 3 * 60 * 1000)
+              );
+              return isLive;
+            })
+            .map((vehicle) => {
+              const lat = Number(vehicle.latitude);
+              const lng = Number(vehicle.longitude);
+              const isLive = true;
+
+              const color = vehicle.route?.color || "#165dff";
+              const icon = getVehicleIcon(color, isLive);
 
               return (
                 <Marker
-                  key={`stop-${stop.id}`}
+                  key={`vehicle-${vehicle.id}`}
                   position={[lat, lng]}
-                  icon={stopIcons(stopNumber)}
+                  icon={icon}
                   eventHandlers={{
-                    click: () => onSelectStop?.(stop),
+                    click: () => onSelectVehicle?.(vehicle),
                   }}
                 >
                   <Tooltip
-                    direction="top"
-                    offset={[0, -28]}
+                    direction="bottom"
+                    offset={[0, 15]}
                     opacity={0.96}
-                    permanent={false}
-                    className="campus-stop-tooltip"
+                    permanent={true}
+                    className={`campus-vehicle-tooltip ${isLive ? "tooltip-live" : "tooltip-standby"}`}
                   >
-                    <span className="tooltip-title">{stop.nameTh}</span>
+                    <span className="vehicle-tooltip-name">
+                      {isLive ? "🟢 " : "⚪ "}
+                      {vehicle.name}
+                      {isLive && vehicle.speed ? ` (${Number(vehicle.speed).toFixed(0)} km/h)` : ""}
+                    </span>
                   </Tooltip>
 
-                  <Popup className="campus-popup">
+                  <Popup className="campus-popup vehicle-popup">
                     <div className="popup-inner">
-                      <div className="popup-tag">จุดจอดที่ {stopNumber}</div>
-                      <h4 className="popup-title">{stop.nameTh}</h4>
-                      {stop.nameEn && <div className="popup-subtitle">{stop.nameEn}</div>}
+                      <div className={`vehicle-popup-badge ${isLive ? "live" : "standby"}`}>
+                        {isLive ? (
+                          <>
+                            <span className="live-dot" /> {lang === "en" ? "Sharing live GPS (Driver)" : "กำลังแชร์พิกัดสด (GPS คนขับ)"}
+                          </>
+                        ) : (
+                          <>
+                            <span className="standby-dot" /> {lang === "en" ? "Standby (Waiting for driver)" : "สแตนด์บาย (รอคนขับเข้าสู่ระบบ)"}
+                          </>
+                        )}
+                      </div>
+                      <h4 className="popup-title">{vehicle.name}</h4>
+                      <div className="popup-meta">
+                        <span className="popup-type">{vehicle.type || (lang === "en" ? "Electric Tram" : "รถรางไฟฟ้า")}</span>
+                        {vehicle.route && (
+                          <span
+                            className="popup-route-pill"
+                            style={{
+                              borderColor: vehicle.route.color || "#165dff",
+                              color: vehicle.route.color || "#165dff",
+                            }}
+                          >
+                            {vehicle.route.name}
+                          </span>
+                        )}
+                      </div>
+
+                      {isLive && vehicle.driverName && (
+                        <div className="popup-driver-row" style={{ fontSize: 12, margin: "4px 0", color: "var(--ink-soft)" }}>
+                          👤 {lang === "en" ? "Driver: " : "คนขับ: "}<strong style={{ color: "var(--navy)" }}>{vehicle.driverName}</strong>
+                        </div>
+                      )}
+
+                      {isLive && typeof vehicle.speed === "number" && vehicle.speed > 0 && (
+                        <div className="popup-speed-row" style={{ fontSize: 12, margin: "2px 0 6px", color: "var(--teal)" }}>
+                          ⚡ {lang === "en" ? "Current Speed: " : "ความเร็วปัจจุบัน: "}<strong>{Number(vehicle.speed).toFixed(1)} km/h</strong>
+                        </div>
+                      )}
+
                       <div className="popup-divider" />
                       <div className="popup-coords">
-                        <span className="coord-label">พิกัด GPS:</span>
+                        <span className="coord-label">{isLive ? (lang === "en" ? "Live Phone GPS:" : "พิกัด GPS มือถือสด:") : (lang === "en" ? "Last GPS:" : "พิกัดล่าสุด:")}</span>
                         <code>
                           {lat.toFixed(6)}, {lng.toFixed(6)}
                         </code>
                       </div>
+                      {vehicle.lastSeenAt && (
+                        <div className="popup-timestamp">
+                            { isLive?(lang === "en" ? "Updated: " : "อัปเดตสดเมื่อ: ") : (lang === "en" ? "Last seen: " : "สัญญาณล่าสุด: ")}
+                          {new Date(vehicle.lastSeenAt).toLocaleTimeString(lang === "en" ? "en-US" : "th-TH", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </div>
+                      )}
                     </div>
                   </Popup>
                 </Marker>
               );
-            })
-          }
-
-        {/* หมุดรถราง: แสดงเฉพาะรถที่มี GPS สดจากมือถือคนขับเท่านั้น (ไม่แสดง mock อยู่นิ่ง) */ }
-        { showVehicles &&
-            vehicles
-              .filter((vehicle) => {
-                const lat = Number(vehicle.latitude);
-                const lng = Number(vehicle.longitude);
-                if (isNaN(lat) || isNaN(lng) || lat === 0) return false;
-
-                // แสดงเฉพาะรถที่กำลังแชร์พิกัดสดจากมือถือคนขับ
-                const isLive = Boolean(
-                  vehicle.isLive ||
-                  (vehicle.lastSeenAt && (Date.now() - new Date(vehicle.lastSeenAt).getTime()) < 3 * 60 * 1000)
-                );
-                return isLive;
-              })
-              .map((vehicle) => {
-                const lat = Number(vehicle.latitude);
-                const lng = Number(vehicle.longitude);
-                const isLive = true;
-
-                const color = vehicle.route?.color || "#165dff";
-                const icon = getVehicleIcon(color, isLive);
-
-                return (
-                  <Marker
-                    key={`vehicle-${vehicle.id}`}
-                    position={[lat, lng]}
-                    icon={icon}
-                    eventHandlers={{
-                      click: () => onSelectVehicle?.(vehicle),
-                    }}
-                  >
-                    <Tooltip
-                      direction="bottom"
-                      offset={[0, 15]}
-                      opacity={0.96}
-                      permanent={true}
-                      className={`campus-vehicle-tooltip ${isLive ? "tooltip-live" : "tooltip-standby"}`}
-                    >
-                      <span className="vehicle-tooltip-name">
-                        {isLive ? "🟢 " : "⚪ "}
-                        {vehicle.name}
-                        {isLive && vehicle.speed ? ` (${Number(vehicle.speed).toFixed(0)} km/h)` : ""}
-                      </span>
-                    </Tooltip>
-
-                    <Popup className="campus-popup vehicle-popup">
-                      <div className="popup-inner">
-                        <div className={`vehicle-popup-badge ${isLive ? "live" : "standby"}`}>
-                          {isLive ? (
-                            <>
-                              <span className="live-dot" /> กำลังแชร์พิกัดสด (GPS คนขับ)
-                            </>
-                          ) : (
-                            <>
-                              <span className="standby-dot" /> สแตนด์บาย (รอคนขับเข้าสู่ระบบ)
-                            </>
-                          )}
-                        </div>
-                        <h4 className="popup-title">{vehicle.name}</h4>
-                        <div className="popup-meta">
-                          <span className="popup-type">{vehicle.type || "รถรางไฟฟ้า"}</span>
-                          {vehicle.route && (
-                            <span
-                              className="popup-route-pill"
-                              style={{
-                                borderColor: vehicle.route.color || "#165dff",
-                                color: vehicle.route.color || "#165dff",
-                              }}
-                            >
-                              {vehicle.route.name}
-                            </span>
-                          )}
-                        </div>
-
-                        {isLive && vehicle.driverName && (
-                          <div className="popup-driver-row" style={{ fontSize: 12, margin: "4px 0", color: "var(--ink-soft)" }}>
-                            👤 คนขับ: <strong style={{ color: "var(--navy)" }}>{vehicle.driverName}</strong>
-                          </div>
-                        )}
-
-                        {isLive && typeof vehicle.speed === "number" && vehicle.speed > 0 && (
-                          <div className="popup-speed-row" style={{ fontSize: 12, margin: "2px 0 6px", color: "var(--teal)" }}>
-                            ⚡ ความเร็วปัจจุบัน: <strong>{Number(vehicle.speed).toFixed(1)} km/h</strong>
-                          </div>
-                        )}
-
-                        <div className="popup-divider" />
-                        <div className="popup-coords">
-                          <span className="coord-label">{isLive ? "พิกัด GPS มือถือสด:" : "พิกัดล่าสุด:"}</span>
-                          <code>
-                            {lat.toFixed(6)}, {lng.toFixed(6)}
-                          </code>
-                        </div>
-                        {vehicle.lastSeenAt && (
-                          <div className="popup-timestamp">
-                            {isLive ? "อัปเดตสดเมื่อ: " : "สัญญาณล่าสุด: "}
-                            {new Date(vehicle.lastSeenAt).toLocaleTimeString("th-TH", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              second: "2-digit",
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+            })}
       </MapContainer>
     </div>
   );

@@ -80,20 +80,24 @@ export default function CampusLiveMap({
   onSelectStop,
   onSelectVehicle,
 }: CampusLiveMapProps) {
-  // สร้าง icon สำหรับรถรางแต่ละสี
-  const tramIcons = useMemo(() => {
-    const makeIcon = (color: string) =>
-      L.divIcon({
-        className: "custom-tram-icon",
+  // สร้าง icon สำหรับรถราง (รองรับทั้งสถานะ Live GPS คนขับ และ สแตนด์บาย)
+  const getVehicleIcon = useMemo(() => {
+    const cache = new Map<string, L.DivIcon>();
+    return (color: string, isLive: boolean) => {
+      const key = `${color}_${isLive}`;
+      if (cache.has(key)) return cache.get(key)!;
+
+      const icon = L.divIcon({
+        className: `custom-tram-icon ${isLive ? "is-live" : "is-standby"}`,
         html: `
-          <div class="tram-marker-wrap">
-            <span class="tram-pulse-ring" style="border-color: ${color};"></span>
-            <div class="tram-marker-body" style="background: ${color};">
+          <div class="tram-marker-wrap ${isLive ? "live-pulse-active" : "standby-mode"}">
+            ${isLive ? `<span class="tram-pulse-ring" style="border-color: ${color};"></span>` : ""}
+            <div class="tram-marker-body" style="background: ${isLive ? color : "#64748b"}; border-color: ${isLive ? "#ffffff" : "#cbd5e1"};">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
                 <path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
               </svg>
             </div>
-            <span class="tram-marker-label">Live</span>
+            <span class="tram-marker-label ${isLive ? "label-live" : "label-standby"}">${isLive ? "LIVE สด" : "Standby"}</span>
           </div>
         `,
         iconSize: [44, 44],
@@ -101,11 +105,8 @@ export default function CampusLiveMap({
         popupAnchor: [0, -22],
       });
 
-    return {
-      default: makeIcon("#165dff"),
-      loop: makeIcon("#165dff"),
-      connector: makeIcon("#f97316"),
-      express: makeIcon("#0ba6a6"),
+      cache.set(key, icon);
+      return icon;
     };
   }, []);
 
@@ -325,19 +326,21 @@ export default function CampusLiveMap({
             );
           })}
 
-        {/* หมุดรถรางที่กำลังวิ่งอยู่ (Live Vehicles) */}
+        {/* หมุดรถราง (Live GPS จากมือถือคนขับ หรือ สแตนด์บาย) */}
         {showVehicles &&
           vehicles.map((vehicle) => {
             const lat = Number(vehicle.latitude);
             const lng = Number(vehicle.longitude);
             if (isNaN(lat) || isNaN(lng) || lat === 0) return null;
 
-            const icon =
-              vehicle.route?.color === "#F97316"
-                ? tramIcons.connector
-                : vehicle.route?.color === "#0ba6a6"
-                ? tramIcons.express
-                : tramIcons.default;
+            // ตรวจสอบสถานะ Live: มีข้อมูลส่งมาไม่เกิน 3 นาที หรือ flag isLive เป็น true
+            const isLive = Boolean(
+              vehicle.isLive ||
+              (vehicle.lastSeenAt && (Date.now() - new Date(vehicle.lastSeenAt).getTime()) < 3 * 60 * 1000)
+            );
+
+            const color = vehicle.route?.color || "#165dff";
+            const icon = getVehicleIcon(color, isLive);
 
             return (
               <Marker
@@ -353,15 +356,27 @@ export default function CampusLiveMap({
                   offset={[0, 15]}
                   opacity={0.96}
                   permanent={true}
-                  className="campus-vehicle-tooltip"
+                  className={`campus-vehicle-tooltip ${isLive ? "tooltip-live" : "tooltip-standby"}`}
                 >
-                  <span className="vehicle-tooltip-name">{vehicle.name}</span>
+                  <span className="vehicle-tooltip-name">
+                    {isLive ? "🟢 " : "⚪ "}
+                    {vehicle.name}
+                    {isLive && vehicle.speed ? ` (${Number(vehicle.speed).toFixed(0)} km/h)` : ""}
+                  </span>
                 </Tooltip>
 
                 <Popup className="campus-popup vehicle-popup">
                   <div className="popup-inner">
-                    <div className="vehicle-popup-badge">
-                      <span className="live-dot" /> กำลังให้บริการ (Live)
+                    <div className={`vehicle-popup-badge ${isLive ? "live" : "standby"}`}>
+                      {isLive ? (
+                        <>
+                          <span className="live-dot" /> กำลังแชร์พิกัดสด (GPS คนขับ)
+                        </>
+                      ) : (
+                        <>
+                          <span className="standby-dot" /> สแตนด์บาย (รอคนขับเข้าสู่ระบบ)
+                        </>
+                      )}
                     </div>
                     <h4 className="popup-title">{vehicle.name}</h4>
                     <div className="popup-meta">
@@ -378,16 +393,29 @@ export default function CampusLiveMap({
                         </span>
                       )}
                     </div>
+
+                    {isLive && vehicle.driverName && (
+                      <div className="popup-driver-row" style={{ fontSize: 12, margin: "4px 0", color: "var(--ink-soft)" }}>
+                        👤 คนขับ: <strong style={{ color: "var(--navy)" }}>{vehicle.driverName}</strong>
+                      </div>
+                    )}
+
+                    {isLive && typeof vehicle.speed === "number" && vehicle.speed > 0 && (
+                      <div className="popup-speed-row" style={{ fontSize: 12, margin: "2px 0 6px", color: "var(--teal)" }}>
+                        ⚡ ความเร็วปัจจุบัน: <strong>{Number(vehicle.speed).toFixed(1)} km/h</strong>
+                      </div>
+                    )}
+
                     <div className="popup-divider" />
                     <div className="popup-coords">
-                      <span className="coord-label">พิกัดปัจจุบัน:</span>
+                      <span className="coord-label">{isLive ? "พิกัด GPS มือถือสด:" : "พิกัดล่าสุด:"}</span>
                       <code>
                         {lat.toFixed(6)}, {lng.toFixed(6)}
                       </code>
                     </div>
                     {vehicle.lastSeenAt && (
                       <div className="popup-timestamp">
-                        อัปเดต:{" "}
+                        {isLive ? "อัปเดตสดเมื่อ: " : "สัญญาณล่าสุด: "}
                         {new Date(vehicle.lastSeenAt).toLocaleTimeString("th-TH", {
                           hour: "2-digit",
                           minute: "2-digit",

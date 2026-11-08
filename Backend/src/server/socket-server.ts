@@ -147,10 +147,22 @@ const server = http.createServer(async (req, res) => {
           isActive: true,
           route: { select: { id: true, name: true, color: true } },
         },
-        orderBy: { name: "asc" },
+        orderBy: { id: "asc" },
       });
+
+      const now = Date.now();
+      const LIVE_GPS_TIMEOUT_MS = 3 * 60 * 1000;
+      const enriched = vehicles.map((v) => {
+        const lastSeenTime = v.lastSeenAt ? new Date(v.lastSeenAt).getTime() : 0;
+        const isLive = Boolean(lastSeenTime && (now - lastSeenTime) < LIVE_GPS_TIMEOUT_MS);
+        return {
+          ...v,
+          isLive,
+        };
+      });
+
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(vehicles));
+      res.end(JSON.stringify(enriched));
     } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Failed to fetch vehicle locations" }));
@@ -238,8 +250,8 @@ const server = http.createServer(async (req, res) => {
         });
 
         const broadcastPayload = {
-          vehicleId: updatedVehicle.id,
           id: updatedVehicle.id,
+          vehicleId: updatedVehicle.id,
           name: updatedVehicle.name,
           type: updatedVehicle.type,
           routeId: updatedVehicle.routeId,
@@ -249,6 +261,8 @@ const server = http.createServer(async (req, res) => {
           speed: payload.speed || 0,
           heading: payload.heading || 0,
           tripId: payload.tripId || null,
+          isLive: true,
+          driverName: payload.driverName || "คนขับออนไลน์",
           route: updatedVehicle.route,
         };
 
@@ -287,7 +301,7 @@ io.on("connection", (socket: Socket) => {
   });
 
   // รถลงทะเบียน socket ประจำคัน (ต้องส่ง token ที่ลงนามแล้ว)
-  socket.on("vehicle:register", (data: { vehicleId: number; token?: string; name?: string }) => {
+  socket.on("vehicle:register", (data: { vehicleId: number; token?: string; name?: string; driverName?: string }) => {
     if (!data?.vehicleId || !data?.token) {
       socket.emit("vehicle:error", { message: "Missing vehicleId or token" });
       return;
@@ -299,9 +313,12 @@ io.on("connection", (socket: Socket) => {
     }
 
     socket.data.vehicleId = verifiedVehicleId;
+    if (data.driverName) {
+      socket.data.driverName = data.driverName;
+    }
     socket.join("vehicles");
     socket.join(`vehicle:${data.vehicleId}`);
-    console.log(`[Socket.io] Vehicle registered: ID ${data.vehicleId} (${socket.id})`);
+    console.log(`[Socket.io] Vehicle registered: ID ${data.vehicleId} (${socket.id}) by ${data.driverName || "driver"}`);
     socket.emit("vehicle:registered", { vehicleId: verifiedVehicleId, socketId: socket.id });
   });
 
@@ -316,9 +333,10 @@ io.on("connection", (socket: Socket) => {
       speed?: number;
       heading?: number;
       tripId?: number;
+      driverName?: string;
     }) => {
       try {
-        const { vehicleId, token, latitude, longitude, speed, heading, tripId } = data;
+        const { vehicleId, token, latitude, longitude, speed, heading, tripId, driverName } = data;
 
         // ตรวจสอบความถูกต้องของสิทธิ์การส่งพิกัดรถ
         const authedVehicleId = socket.data.vehicleId || (token ? verifyVehicleToken(token) : null);
@@ -357,7 +375,10 @@ io.on("connection", (socket: Socket) => {
           },
         });
 
+        const activeDriver = driverName || socket.data.driverName || "คนขับออนไลน์";
+
         const locationPayload = {
+          id: updatedVehicle.id,
           vehicleId: updatedVehicle.id,
           name: updatedVehicle.name,
           type: updatedVehicle.type,
@@ -368,6 +389,8 @@ io.on("connection", (socket: Socket) => {
           speed: speed || 0,
           heading: heading || 0,
           tripId: tripId || null,
+          isLive: true,
+          driverName: activeDriver,
           route: updatedVehicle.route,
         };
 

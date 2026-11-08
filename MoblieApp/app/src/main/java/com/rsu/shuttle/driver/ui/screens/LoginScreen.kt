@@ -155,6 +155,40 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // เลือกรถด่วน
+                Text(
+                    text = "เลือกรถประจำคันที่จะขับ:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = vehicleIdInput == "1",
+                        onClick = { vehicleIdInput = "1" },
+                        label = { Text("#1 รถราง 1", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = vehicleIdInput == "2",
+                        onClick = { vehicleIdInput = "2" },
+                        label = { Text("#2 รถราง 2", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = vehicleIdInput == "3",
+                        onClick = { vehicleIdInput = "3" },
+                        label = { Text("#3 มินิบัส 3", fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 // Vehicle ID
                 OutlinedTextField(
                     value = vehicleIdInput,

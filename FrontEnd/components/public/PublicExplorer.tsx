@@ -45,16 +45,27 @@ export default function PublicExplorer() {
   const [activeItemName, setActiveItemName] = useState<string>("");
   const [followedVehicleId, setFollowedVehicleId] = useState<number | null>(null);
 
-  // Realtime Socket Callback
+  // คำนวณสถานะว่ารถคันไหนกำลังแชร์ GPS สดจากมือถือคนขับ (ภายใน 3 นาที)
+  const LIVE_GPS_TIMEOUT_MS = 3 * 60 * 1000;
+  const isLiveVehicle = useCallback((v: Vehicle) => {
+    if (v.isLive) return true;
+    if (!v.lastSeenAt) return false;
+    return (Date.now() - new Date(v.lastSeenAt).getTime()) < LIVE_GPS_TIMEOUT_MS;
+  }, [LIVE_GPS_TIMEOUT_MS]);
+
+  const liveVehiclesCount = useMemo(() => vehicles.filter(isLiveVehicle).length, [vehicles, isLiveVehicle]);
+  const standbyVehiclesCount = useMemo(() => vehicles.length - liveVehiclesCount, [vehicles, liveVehiclesCount]);
+
+  // Realtime Socket Callback เมื่อคนขับส่งพิกัด GPS สดจากมือถือ
   const handleRealtimeLocation = useCallback((incomingVehicle: Vehicle) => {
     setVehicles((prev) => {
       const idx = prev.findIndex((v) => v.id === incomingVehicle.id);
       if (idx !== -1) {
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], ...incomingVehicle };
+        copy[idx] = { ...copy[idx], ...incomingVehicle, isLive: true };
         return copy;
       }
-      return [...prev, incomingVehicle];
+      return [...prev, { ...incomingVehicle, isLive: true }];
     });
     setLastUpdated(new Date());
 
@@ -65,7 +76,8 @@ export default function PublicExplorer() {
       setFollowedVehicleId((currFollowId) => {
         if (currFollowId === null || currFollowId === incomingVehicle.id) {
           setFocusTarget([lat, lng]);
-          setActiveItemName(`${incomingVehicle.name} (สดจากมือถือ)`);
+          const driverText = incomingVehicle.driverName ? ` (คนขับ: ${incomingVehicle.driverName})` : "";
+          setActiveItemName(`${incomingVehicle.name}${driverText} · สดจากมือถือ`);
           return incomingVehicle.id;
         }
         return currFollowId;
@@ -268,8 +280,11 @@ export default function PublicExplorer() {
                 </svg>
               </span>
               <div>
-                <strong className="stat-num">{vehicles.length} คัน</strong>
-                <span className="stat-label">รถรางที่กำลังวิ่ง</span>
+                <strong className="stat-num">{liveVehiclesCount} คัน</strong>
+                <span className="stat-label">
+                  {liveVehiclesCount > 0 ? "แชร์พิกัด GPS สด" : "รอคนขับเปิด GPS"}
+                  {standbyVehiclesCount > 0 && ` (สแตนด์บาย ${standbyVehiclesCount})`}
+                </span>
               </div>
             </div>
 
@@ -457,69 +472,109 @@ export default function PublicExplorer() {
                       <path d="M3 11h18M7 15h.01M17 15h.01M5 18v2M19 18v2" />
                     </svg>
                   </span>
-                  รถรางที่กำลังให้บริการ
+                  ขบวนรถในระบบ ({vehicles.length} คัน)
                 </h3>
                 <p className="panel-sub">
-                  {vehicles.length > 0
-                    ? `พบรถรางกำลังปฏิบัติการ ${vehicles.length} คัน`
-                    : "ไม่มีรถรางที่เปิดระบบ GPS ในขณะนี้"}
+                  {liveVehiclesCount > 0
+                    ? `พบรถรางกำลังแชร์พิกัด GPS สด ${liveVehiclesCount} คัน (สแตนด์บาย ${standbyVehiclesCount} คัน)`
+                    : "ยังมีรถในระบบครบถ้วน (รอคนขับเข้าสู่ระบบผ่านแอปมือถือเพื่อเริ่มวิ่ง)"}
                 </p>
               </div>
-              <span className="badge-live-count">{vehicles.length} LIVE</span>
+              <span className={`badge-live-count ${liveVehiclesCount > 0 ? "has-live" : "no-live"}`}>
+                {liveVehiclesCount} LIVE
+              </span>
             </div>
 
             {vehicles.length === 0 ? (
               <div className="empty-box">
-                <p>ยังไม่มีรถรางที่ส่งพิกัดในระบบ</p>
-                <small>เมื่อมีรถเปิดเดินเครื่อง ตำแหน่งจะปรากฏบนแผนที่ทันที</small>
+                <p>ยังไม่มีรถในระบบ</p>
+                <small>เมื่อมีรถและคนขับเริ่มเดินเครื่อง ตำแหน่งจะปรากฏบนแผนที่ทันที</small>
               </div>
             ) : (
               <div className="vehicle-card-list">
-                {vehicles.map((v) => (
-                  <div
-                    key={v.id}
-                    className="vehicle-info-card"
-                    onClick={() => handleFocusVehicle(v)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="vehicle-card-top">
-                      <div className="vehicle-title-wrap">
-                        <span
-                          className="vehicle-color-bar"
-                          style={{ background: v.route?.color || "#165dff" }}
-                        />
-                        <div>
-                          <strong className="vehicle-title">{v.name}</strong>
-                          <div className="vehicle-type-tag">
-                            {v.type || "รถรางไฟฟ้า"} · {v.route?.name || "สายทั่วไป"}
+                {vehicles.map((v) => {
+                  const isLive = isLiveVehicle(v);
+                  const isFollowed = followedVehicleId === v.id;
+
+                  return (
+                    <div
+                      key={v.id}
+                      className={`vehicle-info-card ${isLive ? "card-live" : "card-standby"} ${isFollowed ? "is-followed" : ""}`}
+                      onClick={() => handleFocusVehicle(v)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="vehicle-card-top">
+                        <div className="vehicle-title-wrap">
+                          <span
+                            className="vehicle-color-bar"
+                            style={{ background: isLive ? (v.route?.color || "#165dff") : "#94a3b8" }}
+                          />
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <strong className="vehicle-title">{v.name}</strong>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: "2px 7px",
+                                  borderRadius: 99,
+                                  background: isLive ? "rgba(16, 185, 129, 0.15)" : "rgba(148, 163, 184, 0.15)",
+                                  color: isLive ? "#059669" : "#64748b",
+                                }}
+                              >
+                                {isLive ? "● LIVE GPS" : "⚪ สแตนด์บาย"}
+                              </span>
+                            </div>
+                            <div className="vehicle-type-tag">
+                              {v.type || "รถรางไฟฟ้า"} · {v.route?.name || "สายทั่วไป"}
+                              {isLive && v.driverName ? ` · 👤 คนขับ: ${v.driverName}` : ""}
+                            </div>
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          className="btn-locate"
+                          style={{
+                            background: isFollowed ? "#165dff" : undefined,
+                            color: isFollowed ? "#ffffff" : undefined,
+                            borderColor: isFollowed ? "#165dff" : undefined,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFocusVehicle(v);
+                          }}
+                        >
+                          {isFollowed ? "🎯 กำลังติดตาม" : isLive ? "🎯 ติดตามพิกัด" : "ดูตำแหน่ง"}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        className="btn-locate"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleFocusVehicle(v);
-                        }}
-                      >
-                        โฟกัสบนแผนที่
-                      </button>
-                    </div>
 
-                    <div className="vehicle-card-bottom">
-                      <div className="vehicle-coords">
-                        GPS: {Number(v.latitude).toFixed(6)}, {Number(v.longitude).toFixed(6)}
-                      </div>
-                      <div className="vehicle-time">
-                        {v.lastSeenAt
-                          ? `อัปเดต ${new Date(v.lastSeenAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`
-                          : "อัปเดตล่าสุด"}
+                      <div className="vehicle-card-bottom">
+                        <div className="vehicle-coords">
+                          {isLive ? (
+                            <>
+                              <span style={{ color: "#059669", fontWeight: 700 }}>GPS สด: </span>
+                              {Number(v.latitude).toFixed(6)}, {Number(v.longitude).toFixed(6)}
+                              {typeof v.speed === "number" && v.speed > 0 ? ` · ⚡ ${Number(v.speed).toFixed(1)} km/h` : ""}
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ color: "#64748b" }}>ตำแหน่งล่าสุด: </span>
+                              {v.latitude && v.longitude ? `${Number(v.latitude).toFixed(6)}, ${Number(v.longitude).toFixed(6)}` : "รอพิกัด"}
+                            </>
+                          )}
+                        </div>
+                        <div className="vehicle-time">
+                          {isLive
+                            ? "กำลังแชร์สด"
+                            : v.lastSeenAt
+                            ? `ล่าสุด ${new Date(v.lastSeenAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}`
+                            : "รอเริ่มรอบ"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

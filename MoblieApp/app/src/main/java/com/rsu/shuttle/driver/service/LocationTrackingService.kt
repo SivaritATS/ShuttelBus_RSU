@@ -110,9 +110,10 @@ class LocationTrackingService : Service() {
         // เชื่อมต่อ Socket.IO
         val vehicleId = prefs.vehicleId
         val token = prefs.vehicleToken
+        val driverName = prefs.driverName
         if (vehicleId > 0) {
             if (token.isNotEmpty()) {
-                socketManager.connect(prefs.socketUrl, vehicleId, token)
+                socketManager.connect(prefs.socketUrl, vehicleId, token, driverName)
             } else {
                 serviceScope.launch {
                     try {
@@ -121,7 +122,7 @@ class LocationTrackingService : Service() {
                         if (res.isSuccessful && res.body() != null) {
                             val newToken = res.body()!!.token
                             prefs.vehicleToken = newToken
-                            socketManager.connect(prefs.socketUrl, vehicleId, newToken)
+                            socketManager.connect(prefs.socketUrl, vehicleId, newToken, driverName)
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to auto-fetch vehicle token: ${e.message}")
@@ -177,7 +178,8 @@ class LocationTrackingService : Service() {
                 latitude = lat,
                 longitude = lng,
                 speed = speedKmh,
-                heading = heading
+                heading = heading,
+                driverName = prefs.driverName
             )
 
             // 2. ถ้า Socket ไม่ติด ให้ส่งผ่าน HTTP REST Fallback

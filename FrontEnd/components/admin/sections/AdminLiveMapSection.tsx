@@ -187,14 +187,33 @@ export function AdminLiveMapSection({
           <div className="vehicle-card-list">
             {vehicles.map((v) => {
               const activeTrip = activeTrips.find((t) => t.vehicleId === v.id);
+              const isLive = Boolean(
+                v.isLive ||
+                (v.lastSeenAt && (Date.now() - new Date(v.lastSeenAt).getTime()) < 3 * 60 * 1000)
+              );
 
               return (
                 <div key={v.id} className="vehicle-info-card">
                   <div className="vehicle-card-top">
                     <div>
-                      <strong className="vehicle-title">{v.name}</strong>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <strong className="vehicle-title">{v.name}</strong>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: "1px 6px",
+                            borderRadius: 99,
+                            background: isLive ? "rgba(16, 185, 129, 0.15)" : "rgba(148, 163, 184, 0.15)",
+                            color: isLive ? "#059669" : "#64748b",
+                          }}
+                        >
+                          {isLive ? "● LIVE สด" : "⚪ Standby"}
+                        </span>
+                      </div>
                       <div className="vehicle-type-tag">
                         {v.type || "รถราง"} · {v.route?.name || "ยังไม่ผูกสาย"}
+                        {isLive && v.driverName ? ` · 👤 คนขับ: ${v.driverName}` : ""}
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
@@ -220,7 +239,7 @@ export function AdminLiveMapSection({
                         className="button button-secondary"
                         style={{ minHeight: 30, padding: "4px 8px", fontSize: 11 }}
                         onClick={() => onSimulateMove(v.id)}
-                        title="จำลองส่งพิกัด GPS ขยับรถไปข้างหน้า"
+                        title="จำลองส่งพิกัด GPS ขยับรถไปข้างหน้า (สำหรับทดสอบ)"
                       >
                         จำลอง GPS
                       </button>
@@ -230,9 +249,10 @@ export function AdminLiveMapSection({
                     <span className="vehicle-coords">
                       GPS: {v.latitude ? Number(v.latitude).toFixed(6) : "N/A"},{" "}
                       {v.longitude ? Number(v.longitude).toFixed(6) : "N/A"}
+                      {isLive && typeof v.speed === "number" && v.speed > 0 ? ` · ${Number(v.speed).toFixed(1)} km/h` : ""}
                     </span>
                     <span className="vehicle-time">
-                      {v.lastSeenAt ? `อัปเดต ${new Date(v.lastSeenAt).toLocaleTimeString("th-TH")}` : "-"}
+                      {isLive ? "กำลังส่งสัญญาณสด" : v.lastSeenAt ? `อัปเดต ${new Date(v.lastSeenAt).toLocaleTimeString("th-TH")}` : "-"}
                     </span>
                   </div>
                 </div>

@@ -24,8 +24,9 @@ class SocketManager {
 
     private var currentVehicleId: Int = -1
     private var currentToken: String = ""
+    private var currentDriverName: String = ""
 
-    fun connect(serverUrl: String, vehicleId: Int, token: String) {
+    fun connect(serverUrl: String, vehicleId: Int, token: String, driverName: String = "") {
         if (socket?.connected() == true && currentVehicleId == vehicleId) {
             Log.d(TAG, "Socket already connected for vehicleId: $vehicleId")
             return
@@ -35,6 +36,7 @@ class SocketManager {
 
         currentVehicleId = vehicleId
         currentToken = token
+        currentDriverName = driverName
         _state.value = SocketState.Connecting
 
         try {
@@ -54,7 +56,7 @@ class SocketManager {
                 Log.i(TAG, "Socket connected: ${socketInstance.id()}")
                 _state.value = SocketState.Connected
                 // ส่ง event ลงทะเบียนประจำคัน
-                registerVehicle(vehicleId, token)
+                registerVehicle(vehicleId, token, currentDriverName)
             }
 
             socketInstance.on(Socket.EVENT_DISCONNECT) { args ->
@@ -93,13 +95,16 @@ class SocketManager {
         }
     }
 
-    private fun registerVehicle(vehicleId: Int, token: String) {
+    private fun registerVehicle(vehicleId: Int, token: String, driverName: String = "") {
         val payload = JSONObject().apply {
             put("vehicleId", vehicleId)
             put("token", token)
+            if (driverName.isNotEmpty()) {
+                put("driverName", driverName)
+            }
         }
         socket?.emit("vehicle:register", payload)
-        Log.d(TAG, "Emitted vehicle:register for ID $vehicleId")
+        Log.d(TAG, "Emitted vehicle:register for ID $vehicleId (Driver: $driverName)")
     }
 
     fun emitLocation(
@@ -109,7 +114,8 @@ class SocketManager {
         longitude: Double,
         speed: Float? = null,
         heading: Float? = null,
-        tripId: Int? = null
+        tripId: Int? = null,
+        driverName: String? = null
     ): Boolean {
         val s = socket
         if (s == null || !s.connected()) {
@@ -124,10 +130,11 @@ class SocketManager {
             if (speed != null) put("speed", speed)
             if (heading != null) put("heading", heading)
             if (tripId != null) put("tripId", tripId)
+            if (!driverName.isNullOrEmpty()) put("driverName", driverName)
         }
 
         s.emit("vehicle:location:update", json)
-        Log.d(TAG, "Sent GPS update: ($latitude, $longitude), speed: $speed km/h")
+        Log.d(TAG, "Sent GPS update: ($latitude, $longitude), speed: $speed km/h (Driver: $driverName)")
         return true
     }
 

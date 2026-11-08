@@ -11,6 +11,7 @@ export const POST = withErrorHandling(async (request: Request) => {
     speed?: number;
     heading?: number;
     tripId?: number;
+    driverName?: string;
   }>(request);
 
   if (!body.vehicleId || body.latitude === undefined || body.longitude === undefined) {
@@ -48,6 +49,7 @@ export const POST = withErrorHandling(async (request: Request) => {
   });
 
   const locationPayload = {
+    id: vehicle.id,
     vehicleId: vehicle.id,
     name: vehicle.name,
     type: vehicle.type,
@@ -58,6 +60,8 @@ export const POST = withErrorHandling(async (request: Request) => {
     speed: body.speed || 0,
     heading: body.heading || 0,
     tripId: body.tripId || null,
+    isLive: true,
+    driverName: body.driverName || "คนขับออนไลน์",
     route: vehicle.route,
   };
 

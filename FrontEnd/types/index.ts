@@ -34,6 +34,8 @@ export type Vehicle = {
   longitude: number | string | null;
   lastSeenAt: string | null;
   isActive: boolean;
+  isLive?: boolean;
+  driverName?: string | null;
   speed?: number;
   heading?: number;
   tripId?: number | null;

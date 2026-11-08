@@ -326,21 +326,28 @@ export default function CampusLiveMap({
             );
           })}
 
-        {/* หมุดรถราง (Live GPS จากมือถือคนขับ หรือ สแตนด์บาย) */}
+        {/* หมุดรถราง: แสดงเฉพาะรถที่มี GPS สดจากมือถือคนขับเท่านั้น (ไม่แสดง mock อยู่นิ่ง) */}
         {showVehicles &&
-          vehicles.map((vehicle) => {
-            const lat = Number(vehicle.latitude);
-            const lng = Number(vehicle.longitude);
-            if (isNaN(lat) || isNaN(lng) || lat === 0) return null;
+          vehicles
+            .filter((vehicle) => {
+              const lat = Number(vehicle.latitude);
+              const lng = Number(vehicle.longitude);
+              if (isNaN(lat) || isNaN(lng) || lat === 0) return false;
 
-            // ตรวจสอบสถานะ Live: มีข้อมูลส่งมาไม่เกิน 3 นาที หรือ flag isLive เป็น true
-            const isLive = Boolean(
-              vehicle.isLive ||
-              (vehicle.lastSeenAt && (Date.now() - new Date(vehicle.lastSeenAt).getTime()) < 3 * 60 * 1000)
-            );
+              // แสดงเฉพาะรถที่กำลังแชร์พิกัดสดจากมือถือคนขับ
+              const isLive = Boolean(
+                vehicle.isLive ||
+                (vehicle.lastSeenAt && (Date.now() - new Date(vehicle.lastSeenAt).getTime()) < 3 * 60 * 1000)
+              );
+              return isLive;
+            })
+            .map((vehicle) => {
+              const lat = Number(vehicle.latitude);
+              const lng = Number(vehicle.longitude);
+              const isLive = true;
 
-            const color = vehicle.route?.color || "#165dff";
-            const icon = getVehicleIcon(color, isLive);
+              const color = vehicle.route?.color || "#165dff";
+              const icon = getVehicleIcon(color, isLive);
 
             return (
               <Marker

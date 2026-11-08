@@ -157,6 +157,9 @@ const server = http.createServer(async (req, res) => {
         const isLive = Boolean(lastSeenTime && (now - lastSeenTime) < LIVE_GPS_TIMEOUT_MS);
         return {
           ...v,
+          // แสดงพิกัดเฉพาะรถที่กำลังแชร์สดจากมือถือคนขับ ไม่ระบุพิกัดเจาะจงให้อยู่นิ่ง
+          latitude: isLive ? v.latitude : null,
+          longitude: isLive ? v.longitude : null,
           isLive,
         };
       });

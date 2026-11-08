@@ -20,6 +20,12 @@ const CampusLiveMap = dynamic(
   }
 );
 
+const DEFAULT_RSU_VEHICLES: Vehicle[] = [
+  { id: 1, name: "RSU Shuttle 01 (รถรางไฟฟ้า 1)", type: "Electric Tram", routeId: 1, latitude: null as any, longitude: null as any, isActive: true, isLive: false, lastSeenAt: null, route: { id: 1, name: "RSU Main Campus Loop", color: "#165dff" } },
+  { id: 2, name: "RSU Shuttle 02 (รถรางไฟฟ้า 2)", type: "Electric Tram", routeId: 2, latitude: null as any, longitude: null as any, isActive: true, isLive: false, lastSeenAt: null, route: { id: 2, name: "RSU North-South Line", color: "#F97316" } },
+  { id: 3, name: "RSU Shuttle 03 (รถมินิบัสรับส่ง)", type: "Mini Bus", routeId: 3, latitude: null as any, longitude: null as any, isActive: true, isLive: false, lastSeenAt: null, route: { id: 3, name: "RSU Special Express", color: "#0ba6a6" } },
+];
+
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) throw new Error("ไม่สามารถโหลดข้อมูลจากระบบได้");
@@ -135,7 +141,7 @@ export default function PublicExplorer() {
       .then(([routesData, stopsData, vehiclesData]) => {
         const finalRoutes = routesData && routesData.length > 0 ? routesData : (getRoutesWithGeometry() as unknown as Route[]);
         const finalStops = stopsData && stopsData.length > 0 ? stopsData : (MOCK_STOPS as unknown as Stop[]);
-        const finalVehicles = vehiclesData && vehiclesData.length > 0 ? vehiclesData : (MOCK_VEHICLES as unknown as Vehicle[]);
+        const finalVehicles = vehiclesData && vehiclesData.length > 0 ? vehiclesData : DEFAULT_RSU_VEHICLES;
 
         setRoutes(finalRoutes);
         setAllStops(finalStops);
@@ -146,11 +152,11 @@ export default function PublicExplorer() {
         setLastUpdated(new Date());
       })
       .catch((err) => {
-        console.warn("[PublicExplorer] Database API unreachable, loading offline mock campus dataset:", err);
+        console.warn("[PublicExplorer] Database API unreachable, loading offline dataset:", err);
         const fallbackRoutes = getRoutesWithGeometry() as unknown as Route[];
         setRoutes(fallbackRoutes);
         setAllStops(MOCK_STOPS as unknown as Stop[]);
-        setVehicles(MOCK_VEHICLES as unknown as Vehicle[]);
+        setVehicles(DEFAULT_RSU_VEHICLES);
         if (fallbackRoutes.length > 0) {
           setSelectedRoute(fallbackRoutes[0]);
         }

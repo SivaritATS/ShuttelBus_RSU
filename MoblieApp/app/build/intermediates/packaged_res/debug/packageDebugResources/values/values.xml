@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_stop_tracking">หยุดแชร์ตำแหน่ง</string>
+    <string name="app_name">RSU Shuttle Driver</string>
+    <string name="notification_channel_desc">บริการแชร์ตำแหน่ง GPS ของรถบัสแบบเบื้องหลัง</string>
+    <string name="notification_channel_name">RSU Shuttle Tracking</string>
+    <string name="tracking_notification_text">ส่งพิกัด GPS ไปยังศูนย์ควบคุมและผู้โดยสาร</string>
+    <string name="tracking_notification_title">RSU Shuttle กำลังแชร์ตำแหน่ง</string>
+    <style name="Theme.RSUShuttleDriver" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

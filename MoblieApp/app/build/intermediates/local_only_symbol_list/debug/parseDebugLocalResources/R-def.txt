@@ -1,0 +1,15 @@
+R_DEF: Internal format may change without notice
+local
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+mipmap ic_launcher
+mipmap ic_launcher_round
+string action_stop_tracking
+string app_name
+string notification_channel_desc
+string notification_channel_name
+string tracking_notification_text
+string tracking_notification_title
+style Theme.RSUShuttleDriver
+xml backup_rules
+xml data_extraction_rules

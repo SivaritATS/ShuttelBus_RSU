@@ -17,6 +17,7 @@
     "db:deploy": "prisma migrate deploy --schema Backend/prisma/schema.prisma",
     "db:seed": "tsx Backend/prisma/seed.ts",
     "db:user": "tsx Backend/prisma/create-user.ts",
+    "db:token": "tsx Backend/scripts/generate-token.ts",
     "db:studio": "prisma studio --schema Backend/prisma/schema.prisma"
   },
   "prisma": {

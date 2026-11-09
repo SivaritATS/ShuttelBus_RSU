@@ -1633,7 +1633,7 @@ td {
 .campus-map-wrapper {
   width: 100%;
   height: 640px;
-  min-height: 520px;
+  min-height: 280px;
   position: relative;
 }
 
@@ -2718,130 +2718,403 @@ td {
   }
 }
 
-@media (max-width: 850px) {
-  .public-hero {
-    grid-template-columns: 1fr;
-    padding-top: 58px;
-    gap: 36px;
-  }
+  @media (max-width: 1024px) {
+    .public-hero {
+      grid-template-columns: 1fr;
+      padding-top: 48px;
+      gap: 32px;
+    }
 
-  .hero-card-art {
-    min-height: 310px;
-  }
+    .hero-card-art {
+      min-height: 280px;
+    }
 
-  .public-grid,
-  .tracking-grid {
-    grid-template-columns: 1fr;
-  }
+      .data-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
 
-  .data-grid {
-    grid-template-columns: 1fr;
-  }
+        .campus-map-wrapper {
+          height: 500px;
+        }
 
-  .campus-map-wrapper {
-    height: 480px;
-  }
+        .admin-layout {
+          grid-template-columns: 210px 1fr;
+        }
+      }
 
-  .admin-layout {
-    grid-template-columns: 1fr;
-  }
+      @media (max-width: 850px) {
+        .public-hero {
+          grid-template-columns: 1fr;
+          padding-top: 40px;
+          gap: 28px;
+        }
 
-  .admin-sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-    padding: 18px 20px;
-  }
+        .public-grid,
+        .tracking-grid {
+          grid-template-columns: 1fr;
+        }
 
-  .admin-sidebar p {
-    margin-bottom: 14px;
-  }
+        .campus-map-wrapper {
+          height: 460px;
+        }
 
-  .side-nav {
-    display: flex;
-    overflow-x: auto;
-  }
+        .admin-layout {
+          grid-template-columns: 1fr;
+        }
 
-  .side-nav button {
-    white-space: nowrap;
-  }
+        .admin-sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+          padding: 16px 16px 12px;
+        }
 
-  .admin-main {
-    padding-top: 30px;
-  }
+        .admin-sidebar p {
+          margin-bottom: 12px;
+        }
 
-  .admin-columns {
-    grid-template-columns: 1fr;
-  }
+        .side-nav {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding-bottom: 4px;
+        }
 
-  .auth-layout {
-    grid-template-columns: 1fr;
-  }
+          .side-nav::-webkit-scrollbar {
+            display: none;
+          }
 
-  .auth-visual {
-    min-height: 280px;
-    padding: 28px;
-  }
+          .side-nav button,
+          .side-nav a,
+          .side-nav .admin-nav-item {
+            flex-shrink: 0;
+            white-space: nowrap;
+            padding: 8px 14px;
+            min-height: 40px;
+          }
 
-  .auth-visual h2 {
-    margin: 52px 0 12px;
-    font-size: 40px;
-  }
+          .admin-main {
+            padding-top: 24px;
+            padding-left: 16px;
+            padding-right: 16px;
+          }
 
-  .auth-feature-list {
-    display: none;
-  }
-}
+          .admin-columns {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
 
-@media (max-width: 560px) {
-  .topbar {
-    height: 68px;
-    padding: 0 15px;
-  }
+          .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            max-width: 100%;
+          }
 
-  .brand {
-    font-size: 17px;
-  }
+          .table-wrap table {
+            min-width: 560px;
+          }
 
-  .brand-subtitle {
-    display: none;
-  }
+          .auth-layout {
+            grid-template-columns: 1fr;
+          }
 
-  .portal-controls-bar {
-    top: 68px;
-  }
+          .auth-visual {
+            min-height: 240px;
+            padding: 24px;
+          }
 
-  .campus-map-wrapper {
-    height: 420px;
-  }
+          .auth-visual h2 {
+            margin: 36px 0 10px;
+            font-size: 32px;
+          }
 
-  .header-content-grid {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+          .auth-feature-list {
+            display: none;
+          }
+        }
 
-  .portal-stats-group {
-    width: 100%;
-  }
+          @media (max-width: 640px) {
+            .container-wide {
+              width: calc(100% - 20px);
+            }
 
-  .stat-card {
-    flex: 1;
-  }
+            .topbar {
+              height: 62px;
+              padding: 0 12px;
+              gap: 8px;
+            }
 
-  .controls-flex {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+            .brand {
+              font-size: 15px;
+              gap: 8px;
+            }
 
-  .layer-toggles {
-    width: 100%;
-    justify-content: space-between;
-  }
+            .brand-mark {
+              width: 32px;
+              height: 32px;
+              padding: 4px;
+              border-radius: 10px;
+            }
 
-  .search-wrap {
-    max-width: 100%;
-  }
+            .brand-mark svg,
+            .brand-icon-img {
+              width: 20px;
+              height: 20px;
+            }
 
-  .theme-btn-label {
-    display: none;
-  }
-}
+            .brand-title {
+              font-size: 14px;
+            }
+
+            .brand-subtitle {
+              display: none;
+            }
+
+
+              .campus-live-indicator {
+                padding: 4px 8px;
+                gap: 6px;
+              }
+
+
+                .campus-live-indicator .live-text {
+                  display: none;
+                }
+
+                .account-name {
+                  display: none;
+                }
+
+                .portal-header-bar {
+                  padding: 20px 0 14px;
+                }
+
+                .eyebrow-badge {
+                  font-size: 10px;
+                  padding: 3px 9px;
+                  margin-bottom: 6px;
+                }
+
+                .portal-title {
+                  font-size: clamp(22px, 6.2vw, 28px);
+                  margin-bottom: 6px;
+                }
+
+                .portal-desc {
+                  font-size: 13px;
+                  line-height: 1.5;
+                }
+
+                .header-content-grid {
+                  flex-direction: column;
+                  align-items: stretch;
+                  gap: 16px;
+                }
+
+                .portal-stats-group {
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 8px;
+                  width: 100%;
+                }
+
+                .stat-card {
+                  padding: 10px 12px;
+                  gap: 10px;
+                  border-radius: 12px;
+                }
+
+                .stat-icon {
+                  width: 32px;
+                  height: 32px;
+                  font-size: 16px;
+                  border-radius: 8px;
+                }
+
+                .stat-num {
+                  font-size: 18px;
+                }
+
+                .stat-label {
+                  font-size: 10.5px;
+                }
+
+                .stat-card.refresh-card {
+                  grid-column: span 2;
+                  padding: 8px 12px;
+                }
+
+                .button-refresh {
+                  padding: 6px 12px;
+                  font-size: 11.5px;
+                  min-height: 34px;
+                }
+
+                .portal-controls-bar {
+                  top: 62px;
+                  padding: 10px 0;
+                }
+
+                .controls-flex {
+                  flex-direction: column;
+                  align-items: stretch;
+                  gap: 10px;
+                }
+
+                .route-pills-wrap {
+                  display: flex;
+                  flex-wrap: nowrap;
+                  overflow-x: auto;
+                  -webkit-overflow-scrolling: touch;
+                  scrollbar-width: none;
+                  gap: 6px;
+                  width: 100%;
+                  padding-bottom: 2px;
+                }
+
+                .route-pills-wrap::-webkit-scrollbar {
+                  display: none;
+                }
+
+                .route-pill {
+                  flex-shrink: 0;
+                  white-space: nowrap;
+                  padding: 6px 12px;
+                  font-size: 12px;
+                }
+
+                .layer-toggles {
+                  width: 100%;
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 6px;
+                  justify-content: flex-start;
+                }
+
+                .toggle-chip {
+                  padding: 5px 9px;
+                  font-size: 11px;
+                  gap: 5px;
+                }
+
+                .button-reset-view {
+                  padding: 5px 10px;
+                  font-size: 11px;
+                }
+
+                .portal-map-section {
+                  padding: 14px 0 20px;
+                }
+
+                .map-outer-card {
+                  border-radius: 14px;
+                  border-width: 1.5px;
+                }
+
+                .campus-map-wrapper {
+                  height: 380px;
+                  min-height: 280px;
+                }
+
+                .focus-indicator-banner {
+                  max-width: 90%;
+                  font-size: 11.5px;
+                  padding: 5px 12px;
+                  gap: 8px;
+                }
+
+                .portal-data-section {
+                  padding: 4px 0 36px;
+                }
+
+                .data-panel {
+                  padding: 16px 14px;
+                  border-radius: 14px;
+                }
+
+                .data-panel-head {
+                  margin-bottom: 12px;
+                  padding-bottom: 10px;
+                  gap: 10px;
+                }
+
+                .panel-heading {
+                  font-size: 16px;
+                }
+
+                .search-wrap {
+                  max-width: 100%;
+                  width: 100%;
+                }
+
+                .input-search {
+                  font-size: 12.5px;
+                  padding: 7px 10px;
+                }
+
+                .vehicle-card-list {
+                  max-height: 360px;
+                  overflow-y: auto;
+                  -webkit-overflow-scrolling: touch;
+                  gap: 8px;
+                }
+
+                .stops-scroll-list {
+                  max-height: 360px;
+                  overflow-y: auto;
+                  -webkit-overflow-scrolling: touch;
+                }
+
+                .vehicle-info-card {
+                  padding: 11px 12px;
+                }
+
+                .stop-row {
+                  padding: 10px;
+                  min-height: 48px;
+                  border-radius: 10px;
+                }
+
+                .stop-num-badge {
+                  width: 26px;
+                  height: 26px;
+                  font-size: 11px;
+                }
+
+                .stop-title-th {
+                  font-size: 13px;
+                }
+
+                .stop-title-en {
+                  font-size: 11px;
+                }
+
+                .theme-btn-label {
+                  display: none;
+                }
+              }
+
+              @media (max-width: 400px) {
+                .topbar {
+                  padding: 0 8px;
+                  gap: 6px;
+                }
+
+                .brand-title {
+                  font-size: 13px;
+                }
+
+                .campus-map-wrapper {
+                  height: 330px;
+                }
+
+                .portal-title {
+                  font-size: 20px;
+                }
+
+                .stat-num {
+                  font-size: 16px;
+                }
+              }

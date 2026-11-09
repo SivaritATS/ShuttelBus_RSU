@@ -3,6 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import type { Route, RouteStop, Stop, Vehicle, Trip } from "@/types";
+import { useLanguage } from "@/lib/languageContext";
 
 const CampusLiveMap = dynamic(() => import("@/components/map/CampusLiveMap"), {
   ssr: false,
@@ -28,6 +29,7 @@ export function AdminLiveMapSection({
   onEndTrip: (tripId: number) => Promise<void>;
   onSimulateMove: (vehicleId: number) => void;
 }) {
+  const { lang, t } = useLanguage();
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
   const [focusTarget, setFocusTarget] = useState<[number, number] | null>(null);
 
@@ -40,16 +42,14 @@ export function AdminLiveMapSection({
     <div className="admin-map-dashboard">
       <div className="admin-heading">
         <div>
-          <div className="eyebrow">Realtime Operations Center</div>
-          <h1>แผนที่และสถานะเดินรถ (Live Fleet & Trips)</h1>
-          <p>
-            ตรวจสอบตำแหน่งรถรางและทริปที่กำลังปฏิบัติการแบบ Realtime ผ่าน Socket.IO
-          </p>
+          <div className="eyebrow">{t("adminLiveOperationsCenter")}</div>
+          <h1>{t("adminLiveTitle")}</h1>
+          <p>{t("adminLiveDesc")}</p>
         </div>
         <div className="hero-actions">
           <span className={`status ${isSocketConnected ? "active" : "inactive"}`}>
             <span className={`status-indicator-dot ${isSocketConnected ? "live" : "sync"}`} style={{ marginRight: 6 }} />
-            {isSocketConnected ? "Socket Connected" : "Reconnecting…"}
+            {isSocketConnected ? t("adminSocketConnected") : t("adminSocketReconnecting")}
           </span>
         </div>
       </div>
@@ -58,13 +58,13 @@ export function AdminLiveMapSection({
       <div className="portal-controls-bar" style={{ borderRadius: 14, marginBottom: 20, position: "static" }}>
         <div className="controls-flex" style={{ padding: "0 10px" }}>
           <div className="route-pills-wrap">
-            <span className="control-label">สายรถ:</span>
+            <span className="control-label">{lang === "en" ? "Route:" : "สายรถ:"}</span>
             <button
               type="button"
               className={`route-pill ${selectedRouteId === null ? "active" : ""}`}
               onClick={() => { setSelectedRouteId(null); setFocusTarget(null); }}
             >
-              <span>ทุกเส้นทาง</span>
+              <span>{lang === "en" ? "All Routes" : "ทุกเส้นทาง"}</span>
             </button>
             {routes.map((route) => (
               <button
@@ -87,7 +87,7 @@ export function AdminLiveMapSection({
             className="button-reset-view"
             onClick={() => setFocusTarget(null)}
           >
-            รีเซ็ตมุมมอง
+            {t("adminResetView")}
           </button>
         </div>
       </div>
@@ -125,20 +125,20 @@ export function AdminLiveMapSection({
               <h3 className="panel-heading">
                 <span className="icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                 </span>
-                ทริปที่กำลังดำเนินการ ({activeTrips.length})
+                {t("adminActiveTripsHeading")} ({activeTrips.length})
               </h3>
-              <p className="panel-sub">สถานะการเดินรถที่กำลังบันทึกพิกัด</p>
+              <p className="panel-sub">{t("adminActiveTripsSub")}</p>
             </div>
           </div>
 
           {activeTrips.length === 0 ? (
             <div className="empty-box">
-              <p>ขณะนี้ไม่มีทริปที่กำลังเดินรถ</p>
-              <small>สามารถเลือกเริ่มทริปใหม่ได้จากแผงควบคุมรถด้านขวา</small>
+              <p>{t("adminNoActiveTrips")}</p>
+              <small>{t("adminNoActiveTripsSub")}</small>
             </div>
           ) : (
             <div className="vehicle-card-list">
@@ -148,8 +148,8 @@ export function AdminLiveMapSection({
                     <div>
                       <strong className="vehicle-title">{trip.vehicle?.name}</strong>
                       <div className="vehicle-type-tag">
-                        สาย: <strong>{trip.route?.name}</strong> · เริ่มเมื่อ{" "}
-                        {trip.startedAt ? new Date(trip.startedAt).toLocaleTimeString("th-TH") : "-"}
+                        {lang === "en" ? "Route:" : "สาย:"} <strong>{trip.route?.name}</strong> · {lang === "en" ? "Started at " : "เริ่มเมื่อ "}
+                        {trip.startedAt ? new Date(trip.startedAt).toLocaleTimeString(lang === "en" ? "en-US" : "th-TH") : "-"}
                       </div>
                     </div>
                     <button
@@ -158,7 +158,7 @@ export function AdminLiveMapSection({
                       style={{ minHeight: 32, padding: "4px 10px", fontSize: 12 }}
                       onClick={() => onEndTrip(trip.id)}
                     >
-                      จบทริป (End Trip)
+                      {t("adminEndTrip")}
                     </button>
                   </div>
                 </div>
@@ -178,9 +178,9 @@ export function AdminLiveMapSection({
                     <path d="M3 11h18M7 15h.01M17 15h.01M5 18v2M19 18v2" />
                   </svg>
                 </span>
-                ควบคุมยานพาหนะ ({vehicles.length})
+                {t("adminVehicleFleetHeading")} ({vehicles.length})
               </h3>
-              <p className="panel-sub">เริ่มทริปใหม่ หรือจำลองส่งพิกัด GPS แบบ Realtime</p>
+              <p className="panel-sub">{t("adminVehicleFleetSub")}</p>
             </div>
           </div>
 
@@ -208,59 +208,63 @@ export function AdminLiveMapSection({
                             color: isLive ? "#059669" : "#64748b",
                           }}
                         >
-                          {isLive ? "● LIVE สด" : "⚪ Standby"}
+                          {isLive ? (lang === "en" ? "● LIVE" : "● LIVE สด") : (lang === "en" ? "⚪ Standby" : "⚪ Standby")}
                         </span>
                       </div>
                       <div className="vehicle-type-tag">
-                        {v.type || "รถราง"} · {v.route?.name || "ยังไม่ผูกสาย"}
-                        {isLive && v.driverName ? ` · 👤 คนขับ: ${v.driverName}` : ""}
+                        {v.type || (lang === "en" ? "Tram" : "รถราง")} · {v.route?.name || (lang === "en" ? "Unassigned" : "ยังไม่ผูกสาย")}
+                        {isLive && v.driverName ? ` · ${lang === "en" ? "👤 Driver: " : "👤 คนขับ: "}${v.driverName}` : ""}
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      {activeTrip ? (
-                        <span className="status active" style={{ fontSize: 11 }}>
-                          กำลังวิ่ง (Trip #{activeTrip.id})
-                        </span>
-                      ) : (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {activeTrip ? (
+                          <span className="status active" style={{ fontSize: 11 }}>
+                            {lang === "en" ? `Running (Trip #${activeTrip.id})` : `กำลังวิ่ง (Trip #${activeTrip.id})`}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="button button-primary"
+                            style={{ minHeight: 30, padding: "4px 10px", fontSize: 12 }}
+                            onClick={() => {
+                              const defaultRouteId = v.routeId || routes[0]?.id;
+                              if (defaultRouteId) onStartTrip(v.id, defaultRouteId);
+                            }}
+                          >
+                            {t("adminStartTrip")}
+                          </button>
+                        )}
                         <button
                           type="button"
-                          className="button button-primary"
-                          style={{ minHeight: 30, padding: "4px 10px", fontSize: 12 }}
-                          onClick={() => {
-                            const defaultRouteId = v.routeId || routes[0]?.id;
-                            if (defaultRouteId) onStartTrip(v.id, defaultRouteId);
-                          }}
+                          className="button button-secondary"
+                          style={{ minHeight: 30, padding: "4px 8px", fontSize: 11 }}
+                          onClick={() => onSimulateMove(v.id)}
+                          title={lang === "en" ? "Simulate sending GPS forward" : "จำลองส่งพิกัด GPS ขยับรถไปข้างหน้า"}
                         >
-                          เริ่มทริป (Start)
+                          {t("adminSimulateGps")}
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        style={{ minHeight: 30, padding: "4px 8px", fontSize: 11 }}
-                        onClick={() => onSimulateMove(v.id)}
-                        title="จำลองส่งพิกัด GPS ขยับรถไปข้างหน้า (สำหรับทดสอบ)"
-                      >
-                        จำลอง GPS
-                      </button>
+                      </div>
+                    </div>
+                    <div className="vehicle-card-bottom">
+                      <span className="vehicle-coords">
+                        GPS: {v.latitude ? Number(v.latitude).toFixed(6) : "N/A"},{" "}
+                        {v.longitude ? Number(v.longitude).toFixed(6) : "N/A"}
+                        {isLive && typeof v.speed === "number" && v.speed > 0 ? ` · ${Number(v.speed).toFixed(1)} km/h` : ""}
+                      </span>
+                      <span className="vehicle-time">
+                        {isLive
+                          ? (lang === "en" ? "Broadcasting live" : "กำลังส่งสัญญาณสด")
+                          : v.lastSeenAt
+                            ? `${lang === "en" ? "Updated " : "อัปเดต "}${new Date(v.lastSeenAt).toLocaleTimeString(lang === "en" ? "en-US" : "th-TH")}`
+                            : "-"}
+                      </span>
                     </div>
                   </div>
-                  <div className="vehicle-card-bottom">
-                    <span className="vehicle-coords">
-                      GPS: {v.latitude ? Number(v.latitude).toFixed(6) : "N/A"},{" "}
-                      {v.longitude ? Number(v.longitude).toFixed(6) : "N/A"}
-                      {isLive && typeof v.speed === "number" && v.speed > 0 ? ` · ${Number(v.speed).toFixed(1)} km/h` : ""}
-                    </span>
-                    <span className="vehicle-time">
-                      {isLive ? "กำลังส่งสัญญาณสด" : v.lastSeenAt ? `อัปเดต ${new Date(v.lastSeenAt).toLocaleTimeString("th-TH")}` : "-"}
-                    </span>
-                  </div>
-                </div>
-              );
+                  );
             })}
-          </div>
+                </div>
+        </div>
         </div>
       </div>
-    </div>
-  );
+      );
 }

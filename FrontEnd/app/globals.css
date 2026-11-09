@@ -34,6 +34,9 @@ body {
   min-height: 100%;
   background: var(--paper);
   color: var(--ink);
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
@@ -73,6 +76,9 @@ select {
 
 .shell {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -135,19 +141,65 @@ select {
   gap: 7px;
 }
 
+.brand-text {
+  white-space: nowrap;
+}
+
+.brand-title {
+  white-space: nowrap;
+}
+
+.brand-title-full {
+  display: inline;
+}
+
+.brand-title-mobile {
+  display: none;
+}
+
 .nav-link {
   color: var(--ink-soft);
   text-decoration: none;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
   transition: color .18s ease, background .18s ease;
 }
 
-.nav-link:hover,
+.nav-link:hover {
+  color: var(--blue-dark);
+  background: #eaf0ff;
+}
+
 .nav-link.active {
   color: var(--blue-dark);
   background: #eaf0ff;
+}
+
+.admin-link-full {
+  display: inline;
+}
+
+.admin-link-mobile {
+  display: none;
+}
+
+.logout-full-text {
+  display: inline;
+}
+
+.logout-short-text {
+  display: none;
+}
+
+.tab-label-full {
+  display: inline;
+}
+
+.tab-label-mobile {
+  display: none;
 }
 
 .nav-action {
@@ -611,11 +663,16 @@ select {
 
 .stop-item {
   display: grid;
-  grid-template-columns: 35px 1fr auto;
+  grid-template-columns: 35px minmax(0, 1fr) auto;
   align-items: center;
   gap: 11px;
   padding: 13px 0;
   border-bottom: 1px solid #edf2f7;
+  min-width: 0;
+}
+
+.stop-item > div {
+  min-width: 0;
 }
 
 .stop-item:last-child {
@@ -739,6 +796,9 @@ select {
   display: grid;
   grid-template-columns: 248px 1fr;
   min-height: calc(100vh - 76px);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .admin-sidebar {
@@ -2661,16 +2721,58 @@ td {
   border-right-color: var(--line);
 }
 
-[data-theme="dark"] .side-nav button {
+
+
+/* Dark Mode Nav Links & Topbar */
+[data-theme="dark"] .nav-link {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .nav-link:hover {
+  color: #60a5fa;
+  background: #18233a;
+}
+
+
+[data-theme="dark"] .nav-link.active {
+  color: #93c5fd !important;
+  background: #1e2d4d !important;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.25);
+}
+
+
+[data-theme="dark"] .side-nav-link {
+  background: #111a2e;
+  border-color: #1e293b;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .side-nav-link:hover {
+  background: #18233a;
+  border-color: #2b3b5e;
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .side-nav-link.active {
+  background: #165dff !important;
+  border-color: #165dff !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(22, 93, 255, 0.45);
+}
+
+[data-theme="dark"] .side-nav button,
+[data-theme="dark"] .side-nav a {
   color: var(--ink-soft);
 }
 
-[data-theme="dark"] .side-nav button:hover {
+[data-theme="dark"] .side-nav button:hover,
+[data-theme="dark"] .side-nav a:hover {
   background: #18233a;
   color: #60a5fa;
 }
 
-[data-theme="dark"] .side-nav button.active {
+[data-theme="dark"] .side-nav button.active,
+[data-theme="dark"] .side-nav a.active {
   background: #1e2d4d;
   color: #93c5fd;
 }
@@ -2718,403 +2820,841 @@ td {
   }
 }
 
-  @media (max-width: 1024px) {
-    .public-hero {
-      grid-template-columns: 1fr;
-      padding-top: 48px;
-      gap: 32px;
-    }
-
-    .hero-card-art {
-      min-height: 280px;
-    }
-
-      .data-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
-      }
-
-        .campus-map-wrapper {
-          height: 500px;
-        }
-
-        .admin-layout {
-          grid-template-columns: 210px 1fr;
-        }
-      }
-
-      @media (max-width: 850px) {
-        .public-hero {
-          grid-template-columns: 1fr;
-          padding-top: 40px;
-          gap: 28px;
-        }
-
-        .public-grid,
-        .tracking-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .campus-map-wrapper {
-          height: 460px;
-        }
-
-        .admin-layout {
-          grid-template-columns: 1fr;
-        }
-
-        .admin-sidebar {
-          border-right: 0;
-          border-bottom: 1px solid var(--line);
-          padding: 16px 16px 12px;
-        }
-
-        .admin-sidebar p {
-          margin-bottom: 12px;
-        }
-
-        .side-nav {
-          display: flex;
-          gap: 8px;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-          padding-bottom: 4px;
-        }
-
-          .side-nav::-webkit-scrollbar {
-            display: none;
-          }
-
-          .side-nav button,
-          .side-nav a,
-          .side-nav .admin-nav-item {
-            flex-shrink: 0;
-            white-space: nowrap;
-            padding: 8px 14px;
-            min-height: 40px;
-          }
-
-          .admin-main {
-            padding-top: 24px;
-            padding-left: 16px;
-            padding-right: 16px;
-          }
-
-          .admin-columns {
-            grid-template-columns: 1fr;
-            gap: 20px;
-          }
-
-          .table-wrap {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            max-width: 100%;
-          }
-
-          .table-wrap table {
-            min-width: 560px;
-          }
-
-          .auth-layout {
-            grid-template-columns: 1fr;
-          }
-
-          .auth-visual {
-            min-height: 240px;
-            padding: 24px;
-          }
-
-          .auth-visual h2 {
-            margin: 36px 0 10px;
-            font-size: 32px;
-          }
-
-          .auth-feature-list {
-            display: none;
-          }
-        }
-
-          @media (max-width: 640px) {
-            .container-wide {
-              width: calc(100% - 20px);
-            }
-
-            .topbar {
-              height: 62px;
-              padding: 0 12px;
-              gap: 8px;
-            }
-
-            .brand {
-              font-size: 15px;
-              gap: 8px;
-            }
-
-            .brand-mark {
-              width: 32px;
-              height: 32px;
-              padding: 4px;
-              border-radius: 10px;
-            }
-
-            .brand-mark svg,
-            .brand-icon-img {
-              width: 20px;
-              height: 20px;
-            }
-
-            .brand-title {
-              font-size: 14px;
-            }
-
-            .brand-subtitle {
-              display: none;
-            }
-
-
-              .campus-live-indicator {
-                padding: 4px 8px;
-                gap: 6px;
-              }
-
-
-                .campus-live-indicator .live-text {
-                  display: none;
-                }
-
-                .account-name {
-                  display: none;
-                }
-
-                .portal-header-bar {
-                  padding: 20px 0 14px;
-                }
-
-                .eyebrow-badge {
-                  font-size: 10px;
-                  padding: 3px 9px;
-                  margin-bottom: 6px;
-                }
-
-                .portal-title {
-                  font-size: clamp(22px, 6.2vw, 28px);
-                  margin-bottom: 6px;
-                }
-
-                .portal-desc {
-                  font-size: 13px;
-                  line-height: 1.5;
-                }
-
-                .header-content-grid {
-                  flex-direction: column;
-                  align-items: stretch;
-                  gap: 16px;
-                }
-
-                .portal-stats-group {
-                  display: grid;
-                  grid-template-columns: 1fr 1fr;
-                  gap: 8px;
-                  width: 100%;
-                }
-
-                .stat-card {
-                  padding: 10px 12px;
-                  gap: 10px;
-                  border-radius: 12px;
-                }
-
-                .stat-icon {
-                  width: 32px;
-                  height: 32px;
-                  font-size: 16px;
-                  border-radius: 8px;
-                }
-
-                .stat-num {
-                  font-size: 18px;
-                }
-
-                .stat-label {
-                  font-size: 10.5px;
-                }
-
-                .stat-card.refresh-card {
-                  grid-column: span 2;
-                  padding: 8px 12px;
-                }
-
-                .button-refresh {
-                  padding: 6px 12px;
-                  font-size: 11.5px;
-                  min-height: 34px;
-                }
-
-                .portal-controls-bar {
-                  top: 62px;
-                  padding: 10px 0;
-                }
-
-                .controls-flex {
-                  flex-direction: column;
-                  align-items: stretch;
-                  gap: 10px;
-                }
-
-                .route-pills-wrap {
-                  display: flex;
-                  flex-wrap: nowrap;
-                  overflow-x: auto;
-                  -webkit-overflow-scrolling: touch;
-                  scrollbar-width: none;
-                  gap: 6px;
-                  width: 100%;
-                  padding-bottom: 2px;
-                }
-
-                .route-pills-wrap::-webkit-scrollbar {
-                  display: none;
-                }
-
-                .route-pill {
-                  flex-shrink: 0;
-                  white-space: nowrap;
-                  padding: 6px 12px;
-                  font-size: 12px;
-                }
-
-                .layer-toggles {
-                  width: 100%;
-                  display: flex;
-                  flex-wrap: wrap;
-                  gap: 6px;
-                  justify-content: flex-start;
-                }
-
-                .toggle-chip {
-                  padding: 5px 9px;
-                  font-size: 11px;
-                  gap: 5px;
-                }
-
-                .button-reset-view {
-                  padding: 5px 10px;
-                  font-size: 11px;
-                }
-
-                .portal-map-section {
-                  padding: 14px 0 20px;
-                }
-
-                .map-outer-card {
-                  border-radius: 14px;
-                  border-width: 1.5px;
-                }
-
-                .campus-map-wrapper {
-                  height: 380px;
-                  min-height: 280px;
-                }
-
-                .focus-indicator-banner {
-                  max-width: 90%;
-                  font-size: 11.5px;
-                  padding: 5px 12px;
-                  gap: 8px;
-                }
-
-                .portal-data-section {
-                  padding: 4px 0 36px;
-                }
-
-                .data-panel {
-                  padding: 16px 14px;
-                  border-radius: 14px;
-                }
-
-                .data-panel-head {
-                  margin-bottom: 12px;
-                  padding-bottom: 10px;
-                  gap: 10px;
-                }
-
-                .panel-heading {
-                  font-size: 16px;
-                }
-
-                .search-wrap {
-                  max-width: 100%;
-                  width: 100%;
-                }
-
-                .input-search {
-                  font-size: 12.5px;
-                  padding: 7px 10px;
-                }
-
-                .vehicle-card-list {
-                  max-height: 360px;
-                  overflow-y: auto;
-                  -webkit-overflow-scrolling: touch;
-                  gap: 8px;
-                }
-
-                .stops-scroll-list {
-                  max-height: 360px;
-                  overflow-y: auto;
-                  -webkit-overflow-scrolling: touch;
-                }
-
-                .vehicle-info-card {
-                  padding: 11px 12px;
-                }
-
-                .stop-row {
-                  padding: 10px;
-                  min-height: 48px;
-                  border-radius: 10px;
-                }
-
-                .stop-num-badge {
-                  width: 26px;
-                  height: 26px;
-                  font-size: 11px;
-                }
-
-                .stop-title-th {
-                  font-size: 13px;
-                }
-
-                .stop-title-en {
-                  font-size: 11px;
-                }
-
-                .theme-btn-label {
-                  display: none;
-                }
-              }
-
-              @media (max-width: 400px) {
-                .topbar {
-                  padding: 0 8px;
-                  gap: 6px;
-                }
-
-                .brand-title {
-                  font-size: 13px;
-                }
-
-                .campus-map-wrapper {
-                  height: 330px;
-                }
-
-                .portal-title {
-                  font-size: 20px;
-                }
-
-                .stat-num {
-                  font-size: 16px;
-                }
-              }
+@media (max-width: 1024px) {
+  .public-hero {
+    grid-template-columns: 1fr;
+    padding-top: 48px;
+    gap: 32px;
+  }
+
+  .hero-card-art {
+    min-height: 280px;
+  }
+
+  .data-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .campus-map-wrapper {
+    height: 500px;
+  }
+
+  .admin-layout {
+    grid-template-columns: 210px 1fr;
+  }
+}
+
+@media (max-width: 850px) {
+  .public-hero {
+    grid-template-columns: 1fr;
+    padding-top: 40px;
+    gap: 28px;
+  }
+
+  .public-grid,
+  .tracking-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .campus-map-wrapper {
+    height: 460px;
+  }
+
+  .admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 16px 16px 12px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .admin-sidebar p {
+    margin-bottom: 12px;
+  }
+
+  .side-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .side-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .side-nav button,
+  .side-nav a,
+  .side-nav-link,
+  .side-nav .admin-nav-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 8px 14px;
+    min-height: 40px;
+  }
+
+  .admin-main {
+    padding-top: 24px;
+    padding-left: 16px;
+    padding-right: 16px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .admin-columns {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .table-wrap table {
+    min-width: 560px;
+  }
+
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-visual {
+    min-height: 240px;
+    padding: 24px;
+  }
+
+  .auth-visual h2 {
+    margin: 36px 0 10px;
+    font-size: 32px;
+  }
+
+  .auth-feature-list {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .container-wide {
+    width: calc(100% - 20px);
+  }
+
+  .topbar {
+    height: 58px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .brand {
+    font-size: 14px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    padding: 3px;
+    border-radius: 9px;
+  }
+
+  .brand-mark svg,
+  .brand-icon-img {
+    width: 18px;
+    height: 18px;
+  }
+
+  .brand-title {
+    font-size: 13.5px;
+    white-space: nowrap;
+  }
+
+  .brand-title-full {
+    display: none !important;
+  }
+
+  .brand-title-mobile {
+    display: inline !important;
+  }
+
+  .brand-subtitle {
+    display: none !important;
+  }
+
+  .lang-toggle-btn {
+    padding: 2px 4px;
+    gap: 1px;
+    border-radius: 99px;
+  }
+
+  .lang-chip {
+    padding: 3px 5px;
+    font-size: 11px;
+  }
+
+  .lang-divider {
+    font-size: 10px;
+    opacity: 0.5;
+  }
+
+  .theme-toggle-btn {
+    padding: 4px 7px;
+    min-height: 28px;
+  }
+
+  .theme-toggle-inner {
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .topnav {
+    gap: 4px;
+    align-items: center;
+  }
+
+  .admin-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .nav-link {
+    padding: 6px 9px;
+    font-size: 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  .mobile-hide-when-active {
+    display: none !important;
+  }
+
+  .admin-link-full {
+    display: none !important;
+  }
+
+  .admin-link-mobile {
+    display: inline !important;
+  }
+
+  .logout-full-text {
+    display: none !important;
+  }
+
+  .logout-short-text {
+    display: inline !important;
+  }
+
+  .tab-label-full {
+    display: none !important;
+  }
+
+  .tab-label-mobile {
+    display: inline !important;
+  }
+
+  .campus-live-indicator {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .campus-live-indicator .live-text {
+    display: none;
+  }
+
+  .account-name {
+    display: none;
+  }
+
+  .portal-header-bar {
+    padding: 20px 0 14px;
+  }
+
+  .eyebrow-badge {
+    font-size: 10px;
+    padding: 3px 9px;
+    margin-bottom: 6px;
+  }
+
+  .portal-title {
+    font-size: clamp(22px, 6.2vw, 28px);
+    margin-bottom: 6px;
+  }
+
+  .portal-desc {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .header-content-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .portal-stats-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: 12px;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  .stat-num {
+    font-size: 18px;
+  }
+
+  .stat-label {
+    font-size: 10.5px;
+  }
+
+  .stat-card.refresh-card {
+    grid-column: span 2;
+    padding: 8px 12px;
+  }
+
+  .button-refresh {
+    padding: 6px 12px;
+    font-size: 11.5px;
+    min-height: 34px;
+  }
+
+  .portal-controls-bar {
+    top: 62px;
+    padding: 10px 0;
+  }
+
+  .controls-flex {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .route-pills-wrap {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    width: 100%;
+    padding-bottom: 2px;
+  }
+
+  .route-pills-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  .route-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .layer-toggles {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  .toggle-chip {
+    padding: 5px 9px;
+    font-size: 11px;
+    gap: 5px;
+  }
+
+  .button-reset-view {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .portal-map-section {
+    padding: 14px 0 20px;
+  }
+
+  .map-outer-card {
+    border-radius: 14px;
+    border-width: 1.5px;
+  }
+
+  .campus-map-wrapper {
+    height: 380px;
+    min-height: 280px;
+  }
+
+  .focus-indicator-banner {
+    max-width: 90%;
+    font-size: 11.5px;
+    padding: 5px 12px;
+    gap: 8px;
+  }
+
+  .portal-data-section {
+    padding: 4px 0 36px;
+  }
+
+  .data-panel {
+    padding: 16px 14px;
+    border-radius: 14px;
+  }
+
+  .data-panel-head {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    gap: 10px;
+  }
+
+  .panel-heading {
+    font-size: 16px;
+  }
+
+  .search-wrap {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .input-search {
+    font-size: 12.5px;
+    padding: 7px 10px;
+  }
+
+  .vehicle-card-list {
+    max-height: 360px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+  }
+
+  .stops-scroll-list {
+    max-height: 360px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .vehicle-info-card {
+    padding: 11px 12px;
+  }
+
+  .stop-row {
+    padding: 10px;
+    min-height: 48px;
+    border-radius: 10px;
+  }
+
+  .stop-num-badge {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+
+  .stop-title-th {
+    font-size: 13px;
+  }
+
+  .stop-title-en {
+    font-size: 11px;
+  }
+
+  .theme-btn-label {
+    display: none;
+  }
+
+  /* Admin Mobile Responsiveness */
+  .admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .admin-sidebar {
+    padding: 12px 12px 10px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .admin-sidebar h1 {
+    font-size: 17px;
+    margin: 0 0 2px;
+  }
+
+  .admin-sidebar p {
+    font-size: 11px;
+    margin: 0 0 10px;
+  }
+
+  .side-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px 20px 4px 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .side-nav button,
+  .side-nav a,
+  .side-nav-link,
+  .side-nav .admin-nav-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 7px 12px;
+    font-size: 12px;
+    min-height: 34px;
+    border-radius: 99px;
+  }
+
+  .admin-main {
+    padding: 16px 10px 36px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  /* ============================================================
+     Admin Heading - fix overflow on mobile
+  ============================================================ */
+  .admin-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 14px;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .admin-heading h1 {
+    font-size: 18px;
+    letter-spacing: -0.03em;
+    margin: 2px 0 4px;
+    word-break: break-word;
+    max-width: 100%;
+  }
+
+  .admin-heading p {
+    font-size: 12px;
+    line-height: 1.4;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  /* ============================================================
+     Metrics Cards – 3-column compact, no overflow
+  ============================================================ */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 16px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .metric {
+    padding: 10px 4px;
+    border-radius: 12px;
+    text-align: center;
+    min-width: 0;        /* allow shrink below content width */
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .metric:after {
+    display: none;
+  }
+
+  .metric-label {
+    font-size: 10.5px;
+    line-height: 1.25;
+    white-space: normal;
+    word-break: break-word;
+    overflow: hidden;
+    max-width: 100%;
+  }
+
+  .metric-value {
+    font-size: 20px;
+    margin-top: 2px;
+  }
+
+  /* ============================================================
+     Section heading (เส้นทางเดินรถ panel) – prevent button overflow
+  ============================================================ */
+  .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .section-heading > a,
+  .section-heading > button {
+    align-self: flex-start;
+    font-size: 12px;
+    padding: 6px 12px;
+    white-space: nowrap;
+  }
+
+  /* ============================================================
+     Live Map – route pills & control bar
+  ============================================================ */
+  .admin-map-dashboard .portal-controls-bar {
+    margin-bottom: 12px;
+    padding: 8px 0;
+  }
+
+  .admin-map-dashboard .controls-flex {
+    padding: 0 6px !important;
+    gap: 8px;
+  }
+
+  .admin-map-dashboard .route-pills-wrap {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    width: 100%;
+    align-items: center;
+  }
+
+  .admin-map-dashboard .route-pills-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-map-dashboard .control-label {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .admin-map-dashboard .route-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  /* ============================================================
+     Tables – horizontal scroll, adequate min-width
+  ============================================================ */
+  .stop-item {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    padding: 10px 0;
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
+    align-items: center;
+  }
+
+  .stop-item > div {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .stop-name {
+    font-size: 13.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stop-en {
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stop-item .status {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+
+  .vehicle-card-top {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .vehicle-card-top > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .admin-columns {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    padding: 16px 12px;
+    border-radius: 14px;
+    overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .panel.form {
+    padding: 16px 12px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .table-wrap table {
+    min-width: 660px;    /* wide enough for 5 admin table columns */
+    white-space: nowrap; /* prevent wrapping inside cells */
+  }
+
+  /* Allow long name cells to wrap (not everything) */
+  .table-wrap table td:first-child,
+  .table-wrap table th:first-child {
+    white-space: normal;
+    min-width: 110px;
+    max-width: 160px;
+    word-break: break-word;
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .icon-button {
+    min-height: 30px;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 400px) {
+  .topbar {
+    padding: 0 6px;
+    gap: 4px;
+  }
+
+  .brand {
+    gap: 4px;
+  }
+
+  .brand-title-mobile {
+    font-size: 12.5px;
+  }
+
+  .nav-link {
+    padding: 5px 7px;
+    font-size: 11px;
+  }
+
+  .campus-map-wrapper {
+    height: 320px;
+  }
+
+  .portal-title {
+    font-size: 20px;
+  }
+
+  .stat-num {
+    font-size: 16px;
+  }
+
+  /* Extra small: metrics even more compact */
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .metric {
+    padding: 8px 2px;
+    min-width: 0;
+  }
+
+  .metric-label {
+    font-size: 9.5px;
+    line-height: 1.2;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .metric-value {
+    font-size: 17px;
+  }
+
+  .admin-main {
+    padding: 12px 8px 32px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+}

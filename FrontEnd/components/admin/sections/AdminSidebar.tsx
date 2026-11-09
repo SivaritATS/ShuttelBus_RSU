@@ -3,19 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { AdminTab } from "../admin-types";
+import { useLanguage } from "@/lib/languageContext";
 
 interface NavEntry {
   key: AdminTab;
-  label: string;
+  labelTh: string;
+  labelThShort: string;
+  labelEn: string;
+  labelEnShort: string;
   href: string;
 }
 
 const navEntries: NavEntry[] = [
-  { key: "overview", label: "Overview", href: "/admin" },
-  { key: "live-map", label: "Live Map and Trip", href: "/admin/live-map" },
-  { key: "vehicles", label: "Vehicle", href: "/admin/vehicles" },
-  { key: "routes", label: "Route", href: "/admin/routes" },
-  { key: "stops", label: "Stop", href: "/admin/stops" },
+  { key: "overview", labelTh: "ภาพรวมระบบ", labelThShort: "ภาพรวม", labelEn: "Overview", labelEnShort: "Overview", href: "/admin" },
+  { key: "live-map", labelTh: "แผนที่สด & ทริปเดินรถ", labelThShort: "แผนที่สด", labelEn: "Live Map & Trips", labelEnShort: "Live Map", href: "/admin/live-map" },
+  { key: "vehicles", labelTh: "จัดการรถราง (Vehicle)", labelThShort: "รถราง", labelEn: "Vehicles", labelEnShort: "Vehicles", href: "/admin/vehicles" },
+  { key: "routes", labelTh: "จัดการสายรถ (Route)", labelThShort: "สายรถ", labelEn: "Routes", labelEnShort: "Routes", href: "/admin/routes" },
+  { key: "stops", labelTh: "จัดการจุดจอด (Stop)", labelThShort: "จุดจอด", labelEn: "Stops", labelEnShort: "Stops", href: "/admin/stops" },
 ];
 
 export function AdminSidebar({
@@ -28,6 +32,7 @@ export function AdminSidebar({
   onReset: () => void;
 }) {
   const pathname = usePathname();
+  const { lang, t } = useLanguage();
 
   const isItemActive = (entry: NavEntry) => {
     if (pathname === entry.href) return true;
@@ -40,11 +45,13 @@ export function AdminSidebar({
 
   return (
     <aside className="admin-sidebar">
-      <h1>Operations</h1>
-      <p>Campus transport control room</p>
+      <h1>{t("adminOperations")}</h1>
+      <p>{t("adminControlRoom")}</p>
       <nav className="side-nav">
         {navEntries.map((entry) => {
           const active = isItemActive(entry);
+          const fullText = lang === "en" ? entry.labelEn : entry.labelTh;
+          const shortText = lang === "en" ? entry.labelEnShort : entry.labelThShort;
           return (
             <Link
               key={entry.key}
@@ -58,7 +65,8 @@ export function AdminSidebar({
               }}
             >
               <NavIcon name={entry.key} />
-              {entry.label}
+              <span className="tab-label-full">{fullText}</span>
+              <span className="tab-label-mobile">{shortText}</span>
             </Link>
           );
         })}
@@ -69,7 +77,7 @@ export function AdminSidebar({
 
 export function getAdminTabLabel(tab: AdminTab) {
   const match = navEntries.find((e) => e.key === tab);
-  return match?.label || tab;
+  return match?.labelTh || tab;
 }
 
 function NavIcon({ name }: { name: AdminTab }) {

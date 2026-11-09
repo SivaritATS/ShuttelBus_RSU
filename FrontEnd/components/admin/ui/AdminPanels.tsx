@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useLanguage } from "@/lib/languageContext";
 
 export function EntityPanel({ title, subtitle, count, children }: { title: string; subtitle: string; count: number; children: ReactNode }) {
   return (
@@ -16,13 +19,19 @@ export function EntityPanel({ title, subtitle, count, children }: { title: strin
 }
 
 export function PanelForm({ title, children, onSubmit, onCancel }: { title: string; children: ReactNode; onSubmit: () => void; onCancel: () => void }) {
+  const { lang, t } = useLanguage();
+
   return (
     <div className="panel form">
       <h3>{title}</h3>
       {children}
       <div className="form-actions">
-        <button type="button" className="button button-ghost" onClick={onCancel}>ล้าง</button>
-        <button type="button" className="button button-primary" onClick={onSubmit}>บันทึก</button>
+        <button type="button" className="button button-ghost" onClick={onCancel}>
+          {t("adminBtnClear")}
+        </button>
+        <button type="button" className="button button-primary" onClick={onSubmit}>
+          {t("adminBtnSave")}
+        </button>
       </div>
     </div>
   );

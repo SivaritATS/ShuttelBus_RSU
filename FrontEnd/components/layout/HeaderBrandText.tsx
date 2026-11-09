@@ -7,11 +7,11 @@ export default function HeaderBrandText() {
 
   return (
     <span className="brand-text">
-      <span className="brand-title">Shuttle Bus RSU</span>
+      <span className="brand-title brand-title-full">Shuttle Bus RSU</span>
+      <span className="brand-title brand-title-mobile">RSU Shuttle</span>
       <span className="brand-subtitle">
         {lang === "en" ? "RSU Tram Tracking System" : "ระบบติดตามรถราง ม.รังสิต"}
       </span>
     </span>
   );
 }
-
